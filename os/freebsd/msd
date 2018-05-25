@@ -1,0 +1,37 @@
+#!/bin/sh
+### Rozhuk Ivan 2011 - 2018
+### startup script file for msd
+###
+
+
+# PROVIDE: msd
+# REQUIRE: DAEMON
+# BEFORE:  LOGIN
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="msd"
+rcvar=msd_enable
+
+load_rc_config $name
+
+: ${msd_enable="NO"}
+: ${msd_command="@CMAKE_INSTALL_PREFIX@/bin/msd"}
+: ${msd_cfgfile="@CONFDIR@/msd.conf"}
+: ${msd_pidfile="@RUNDIR@/msd.pid"}
+: ${msd_user="www"}
+: ${msd_group="www"}
+: ${msd_chroot=""}
+: ${msd_chdir=""}
+
+
+command=${msd_command}
+command_args="-d -c ${msd_cfgfile} -P ${msd_pidfile}"
+
+pidfile="${msd_chroot}${msd_pidfile}"
+required_dirs=${msd_chroot}
+required_files="${msd_chroot}${command}"
+
+
+run_rc_command "$1"
