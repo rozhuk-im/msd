@@ -1551,7 +1551,7 @@ mpeg2_ts_txt_dump(mpeg2_ts_data_p m2ts, uint8_t *buf, size_t buf_size,
 	    0 != m2ts->dropped_count ||
 	    0 != m2ts->key_frames_cnt) {
 		size_ret += (size_t)snprintf((char*)(buf + size_ret), (buf_size - size_ret),
-		   "	null pid count: %zu, dropped count: %zu, key frames count: %zu\r\n",
+		   "	null pid count: %"PRIu64", dropped count: %"PRIu64", key frames count: %zu\r\n",
 		    m2ts->null_pid_count, m2ts->dropped_count, m2ts->key_frames_cnt);
 	}
 	if (0 != m2ts->pat.pkt_count && 0 == mpeg2_ts_txt_dump_pid(m2ts, &m2ts->pat,
