@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2016 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
