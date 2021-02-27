@@ -84,6 +84,7 @@
       </VirtualDirectory>
       <VirtualDirectory Name="include">
         <VirtualDirectory Name="utils">
+          <File Name="src/liblcb/include/utils/num2str.h"/>
           <File Name="src/liblcb/include/utils/buf_str.h"/>
           <File Name="src/liblcb/include/utils/cmd_line_daemon.h"/>
           <File Name="src/liblcb/include/utils/info.h"/>

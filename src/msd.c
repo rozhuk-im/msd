@@ -530,6 +530,8 @@ main(int argc, char *argv[]) {
 		LOG_INFO("Config file XML format invalid.");
 		goto err_out;
 	}
+	g_data.cfg_file_buf = cfg_file_buf;
+	g_data.cfg_file_buf_size = cfg_file_buf_size;
 
 	/* Log file */
 	if (0 == cmd_line_data.verbose &&
