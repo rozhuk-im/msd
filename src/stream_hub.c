@@ -818,7 +818,7 @@ str_hub_cli_destroy(str_hub_cli_p strh_cli) {
 
 int
 str_hub_cli_set_user_agent(str_hub_cli_p strh_cli, const char *ua,
-    size_t ua_size) {
+    const size_t ua_size) {
 
 	if (NULL == strh_cli)
 		return (EINVAL);
@@ -829,12 +829,10 @@ str_hub_cli_set_user_agent(str_hub_cli_p strh_cli, const char *ua,
 	}
 	if (NULL == ua || 0 == ua_size) /* Empty value. */
 		return (0);
-	strh_cli->user_agent = malloc((ua_size + sizeof(void*)));
+	strh_cli->user_agent = mem_dup2(ua, ua_size, 1);
 	if (NULL == strh_cli->user_agent)
 		return (ENOMEM);
 	strh_cli->user_agent_size = ua_size;
-	memcpy(strh_cli->user_agent, ua, ua_size);
-	strh_cli->user_agent[ua_size] = 0;
 
 	return (0);
 }

@@ -221,7 +221,7 @@ int	str_hubs_bckt_stat_summary(str_hubs_bckt_p shbskt, str_hubs_stat_p stat);
 str_hub_cli_p str_hub_cli_alloc(uint32_t cli_type, uint32_t cli_sub_type);
 void	str_hub_cli_destroy(str_hub_cli_p strh_cli);
 int	str_hub_cli_set_user_agent(str_hub_cli_p strh_cli, const char *ua,
-	    size_t ua_size);
+	    const size_t ua_size);
 tp_task_p str_hub_cli_export_tptask(str_hub_cli_p strh_cli);
 int	str_hub_cli_import_tptask(str_hub_cli_p strh_cli, tp_task_p tptask,
 	    tpt_p tpt);
