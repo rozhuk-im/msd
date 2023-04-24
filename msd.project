@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CodeLite_Project Name="msd" InternalType="" Version="11000">
-  <VirtualDirectory Name="workflows">
-    <File Name=".github/workflows/build-ubuntu-latest.yml"/>
-    <File Name=".github/workflows/build-macos-latest.yml"/>
-  </VirtualDirectory>
   <Plugins>
     <Plugin Name="CppCheck"/>
     <Plugin Name="CMakePlugin">
@@ -28,6 +24,10 @@
  }]]]>
     </Plugin>
   </Plugins>
+  <VirtualDirectory Name="workflows">
+    <File Name=".github/workflows/build-ubuntu-latest.yml"/>
+    <File Name=".github/workflows/build-macos-latest.yml"/>
+  </VirtualDirectory>
   <Reconciliation>
     <Regexes/>
     <Excludepaths/>
@@ -115,6 +115,7 @@
           <File Name="src/liblcb/include/proto/rtp.h"/>
         </VirtualDirectory>
         <VirtualDirectory Name="net">
+          <File Name="src/liblcb/include/net/socket_options.h"/>
           <File Name="src/liblcb/include/net/host_address.h"/>
           <File Name="src/liblcb/include/net/hostname_list.h"/>
           <File Name="src/liblcb/include/net/socket.h"/>

@@ -133,7 +133,8 @@ int	msd_hub_attach_cli(str_hubs_bckt_p shbskt, const uint8_t *name, size_t name_
 	    uint32_t src_type, str_src_settings_p src_s);
 uint32_t msd_http_req_url_parse(int type, http_srv_req_p req,
 	    const uint8_t **str_addr, size_t *str_addr_size,
-	    sockaddr_storage_p ssaddr, uint32_t *if_index,
+	    sockaddr_storage_p ssaddr,
+	    uint32_t *if_index, uint32_t *rejoin_time,
 	    uint8_t *hub_name, size_t hub_name_size,
 	    size_t *hub_name_size_ret);
 #define REQ_URL_TYPE_UDP	1
@@ -849,11 +850,11 @@ msd_hub_attach_cli(str_hubs_bckt_p shbskt, const uint8_t *name, size_t name_size
 uint32_t
 msd_http_req_url_parse(int type, http_srv_req_p req,
     const uint8_t **str_addr, size_t *str_addr_size, sockaddr_storage_p ssaddr,
-    uint32_t *if_index,
+    uint32_t *if_index, uint32_t *rejoin_time,
     uint8_t *hub_name, size_t hub_name_size, size_t *hub_name_size_ret) {
 	const uint8_t *ptm;
 	size_t tm = 0, tm2;
-	uint32_t ifindex;
+	uint32_t ifindex, rejointime;
 	char straddr[STR_ADDR_LEN], ifname[(IFNAMSIZ + 1)];
 	sockaddr_storage_t ss;
 
@@ -891,6 +892,18 @@ msd_http_req_url_parse(int type, http_srv_req_p req,
 			ifname[0] = 0;
 			if_indextoname(ifindex, ifname);
 		}
+		/* rejoin_time. */
+		if (0 == http_query_val_get(req->line.query, 
+		    req->line.query_size, (const uint8_t*)"rejoin_time", 11,
+		    &ptm, &tm)) {
+			rejointime = ustr2u32(ptm, tm);
+		} else { /* Default value. */
+			if (NULL != if_index) {
+				rejointime = (*rejoin_time);
+			} else {
+				rejointime = 0;
+			}
+		}
 
 		if (0 != sa_addr_port_to_str(&ss, straddr, sizeof(straddr), NULL))
 			return (400);
@@ -907,6 +920,9 @@ msd_http_req_url_parse(int type, http_srv_req_p req,
 		}
 		if (NULL != if_index) {
 			(*if_index) = ifindex;
+		}
+		if (NULL != rejoin_time) {
+			(*rejoin_time) = rejointime;
 		}
 		break;
 	case REQ_URL_TYPE_HTTP_TRANSP:
@@ -1087,16 +1103,23 @@ err_out_dyn_client:
 		memcpy(src_conn_params, &prog_service->src_conn_params, sizeof(str_src_conn_params_t));
 		if (STR_SRC_TYPE_MULTICAST == src_type) {
 			/* Get multicast address, ifindex, hub name. */
-			resp->status_code = msd_http_req_url_parse(REQ_URL_TYPE_UDP, req, NULL, NULL,
-			    &src_conn_params->udp.addr, &src_conn_params->mc.if_index, buf, sizeof(buf),
-			    &buf_size);
+			resp->status_code = msd_http_req_url_parse(
+			    REQ_URL_TYPE_UDP, req,
+			    NULL, NULL,
+			    &src_conn_params->udp.addr,
+			    &src_conn_params->mc.if_index,
+			    &src_conn_params->mc.rejoin_time,
+			    buf, sizeof(buf), &buf_size);
 			if (200 != resp->status_code)
 				goto err_out_dyn_client;
 		} else {
 			/* Get dst ip address, host name, hub name. */
-			resp->status_code = msd_http_req_url_parse(REQ_URL_TYPE_HTTP, req, &str_addr,
-			    &str_addr_size, &src_conn_params->tcp.addr[0], NULL, buf, sizeof(buf),
-			    &buf_size);
+			resp->status_code = msd_http_req_url_parse(
+			    REQ_URL_TYPE_HTTP, req,
+			    &str_addr, &str_addr_size,
+			    &src_conn_params->tcp.addr[0],
+			    NULL, NULL,
+			    buf, sizeof(buf), &buf_size);
 			if (200 != resp->status_code)
 				goto err_out_dyn_client;
 			/* Generate http request */

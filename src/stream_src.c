@@ -167,6 +167,20 @@ str_src_timer_proc(str_src_p src, struct timespec *ts_now, struct timespec *ts_p
 		if (0 != error)
 			return (error);
 	}
+	/* Re join multicast group timer. */
+	if ((STR_SRC_TYPE_MULTICAST == src->type ||
+	     STR_SRC_TYPE_MULTICAST_RTP == src->type) &&
+	    0 != src->s.src_conn_params->mc.rejoin_time &&
+	    src->next_rejoin_time < ts_now->tv_sec) {
+		src->next_rejoin_time = (ts_now->tv_sec + (time_t)src->s.src_conn_params->mc.rejoin_time);
+		for (int join = 0; join < 2; join ++) {
+		    error = skt_mc_join(tp_task_ident_get(src->tptask),
+		        join,
+			src->s.src_conn_params->mc.if_index,
+			&src->s.src_conn_params->mc.udp.addr);
+		    LOG_ERR(error, "skt_mc_join()");
+		}
+	}
 
 	/* Stat update. */
 	/* Source updates. */
@@ -355,6 +369,7 @@ str_src_conn_def(uint32_t type, str_src_conn_params_p src_conn_params) {
 	case STR_SRC_TYPE_MULTICAST:
 	case STR_SRC_TYPE_MULTICAST_RTP:
 		src_conn_params->mc.if_index = STR_SRC_CONN_DEF_IFINDEX;
+		src_conn_params->mc.rejoin_time = 0;
 		break;
 	case STR_SRC_TYPE_TCP_HTTP:
 	case STR_SRC_TYPE_TCP:
@@ -397,6 +412,9 @@ str_src_conn_xml_load_settings(const uint8_t *buf, size_t buf_size,
 			if_name[MIN(IFNAMSIZ, data_size)] = 0;
 			((str_src_conn_mc_p)conn)->if_index = if_nametoindex(if_name);
 		}
+		xml_get_val_uint32_args(data, data_size, NULL,
+		    &((str_src_conn_mc_p)conn)->rejoin_time,
+		    (const uint8_t*)"multicast", "rejoinTime", NULL);
 		break;
 	case STR_SRC_TYPE_TCP:
 	case STR_SRC_TYPE_TCP_HTTP:

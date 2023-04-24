@@ -57,6 +57,7 @@ typedef struct str_src_conn_udp_s {
 typedef struct str_src_conn_mc_s {
 	str_src_conn_udp_t udp;
 	uint32_t	if_index;
+	uint32_t	rejoin_time;
 } str_src_conn_mc_t, *str_src_conn_mc_p;
 
 #define STR_SRC_CONN_TCP_MAX_ADDRS	8
@@ -167,6 +168,8 @@ typedef struct str_src_s {
 	uint64_t	rtp_sn_errors;	/* Count Continuity/Sequence number errors. */
 
 	mpeg2_ts_data_p	m2ts;		/* MPEG2-TS data. */
+
+	time_t		next_rejoin_time; /* Next time to send leave+join. */
 
 	uintptr_t	r_buf_fd;	/* r_buf shared memory file descriptor, then STR_SRC_S_F_ENABLE_RING_BUF_IN_FILE set */
 	char		r_buf_f_name[(STR_SRC_R_BUF_PATH_MAX + 64)]; /* r_buf shared memory file name, then STR_SRC_S_F_ENABLE_RING_BUF_IN_FILE set */
