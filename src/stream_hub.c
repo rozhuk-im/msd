@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2012 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2012-2024 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -302,8 +302,6 @@ str_hub_settings_free_data(str_hub_settings_p s) {
 	}
 	/* Extra free */
 	str_src_settings_free_data(&s->str_src_settings);
-
-	mem_filld(s, sizeof(str_hub_settings_t));
 }
 
 
@@ -373,7 +371,6 @@ str_hubs_bckt_destroy(str_hubs_bckt_p shbskt) {
 	    str_hubs_bckt_destroy_msg_cb, shbskt);
 
 	free(shbskt->thr_data);
-	mem_filld(shbskt, sizeof(str_hubs_bckt_t));
 	free(shbskt);
 }
 void
@@ -691,7 +688,6 @@ str_hub_destroy(str_hub_p str_hub) {
 
 	str_hub_settings_free_data(&str_hub->s);
 
-	mem_filld(str_hub, (sizeof(str_hub_t) + str_hub->name_size));
 	free(str_hub);
 }
 
@@ -810,9 +806,7 @@ str_hub_cli_destroy(str_hub_cli_p strh_cli) {
 	}
 	tp_task_destroy(strh_cli->tptask);
 
-	if (NULL != strh_cli->user_agent)
-		free(strh_cli->user_agent);
-	mem_filld(strh_cli, sizeof(str_hub_cli_t));
+	free(strh_cli->user_agent);
 	free(strh_cli);
 }
 

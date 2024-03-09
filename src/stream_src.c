@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2012 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2012-2024 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -488,7 +488,6 @@ str_src_settings_free_data(str_src_settings_p s) {
 	mpeg2_ts_settings_free_data(&s->m2ts_s);
 	/*if (NULL != s->cust_http_hdrs)
 		free(s->cust_http_hdrs);*/
-	mem_filld(s, sizeof(str_src_settings_t));
 }
 
 
@@ -674,7 +673,6 @@ str_src_destroy(str_src_p src) {
 		break;
 	}
 	mpeg2_ts_data_free(src->m2ts);
-	mem_filld(src, (sizeof(str_src_t) + 64));
 	free(src);
 }
 

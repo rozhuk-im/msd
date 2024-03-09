@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2016 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2016-2024 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -313,7 +313,6 @@ dvb_fe_destroy(dvb_fe_p dvb_fe) {
 	if (NULL == dvb_fe)
 		return;
 
-	mem_filld(dvb_fe, sizeof(dvb_fe_t));
 }
 
 

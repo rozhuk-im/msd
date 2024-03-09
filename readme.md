@@ -4,7 +4,7 @@
 [![Build-Ubuntu-latest Actions Status](https://github.com/rozhuk-im/msd/workflows/build-ubuntu-latest/badge.svg)](https://github.com/rozhuk-im/msd/actions)
 
 
-Rozhuk Ivan <rozhuk.im@gmail.com> 2011 - 2021
+Rozhuk Ivan <rozhuk.im@gmail.com> 2011-2024
 
 msd - Multi stream daemon.
 Program for organizing IP TV streaming on the network via HTTP.
@@ -13,6 +13,13 @@ Program for organizing IP TV streaming on the network via HTTP.
 ## Licence
 BSD licence.
 Website: http://www.netlab.linkpc.net/wiki/en:software:msd:index
+
+
+## Donate
+Support the author
+* **Buy Me A Coffee:** [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/rojuc) <br/>
+* **PayPal:** [![PayPal](https://srv-cdn.himpfen.io/badges/paypal/paypal-flat.svg)](https://paypal.me/rojuc) <br/>
+* **Bitcoin (BTC):** `1AxYyMWek5vhoWWRTWKQpWUqKxyfLarCuz` <br/>
 
 
 ## Features

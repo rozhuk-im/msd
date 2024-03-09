@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2012 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2012-2024 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -254,7 +254,6 @@ mpeg2_ts_settings_free_data(mpeg2_ts_settings_p s) {
 		s->pids_flt.pids = NULL;
 		s->pids_flt.pids_count = 0;
 	}
-	mem_filld(s, sizeof(mpeg2_ts_settings_t));
 }
 
 
@@ -322,7 +321,6 @@ mpeg2_ts_data_free(mpeg2_ts_data_p m2ts) {
 		m2ts->key_frames_time = NULL;
 	}
 	mpeg2_ts_settings_free_data(&m2ts->s);
-	mem_filld(m2ts, sizeof(mpeg2_ts_data_t));
 	free(m2ts);
 }
 
@@ -939,12 +937,12 @@ mpeg2_ts_psi_tbl_reassemble(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 	ts_pid->psi_tbl_last = NULL;
 	ts_pid->psi_sect_last = NULL;
 	/* CRC32 check. */
-	if (0 != crc32_be((uint8_t*)psi_sect->data, psi_sect->data_size)) {
+	if (0 != crc32mpeg2((uint8_t*)psi_sect->data, psi_sect->data_size)) {
 		psi_sect->done = 0;
 		psi_sect->data_w_off = 0;
 		ts_hdr->te = 1; /* Mark packet as bad. */
 		ts_pid->crc_errors ++;
-		LOGD_EV_FMT("CRC32 = %"PRIu32"", crc32_be((uint8_t*)psi_sect->data, psi_sect->data_size));
+		LOGD_EV_FMT("CRC32 = %"PRIu32"", crc32mpeg2((uint8_t*)psi_sect->data, psi_sect->data_size));
 #if 1
 		M2TS_DUMP_MPEG2TS_HDR(ts_hdr);
 		M2TS_DUMP_MPEG2TS_PSI_HDR(tbl_hdr);
