@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2016 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2016-2024 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,12 +42,12 @@
 #include <string.h> /* bcopy, bzero, memcpy, memmove, memset, strerror... */
 #include <time.h>
 #include <errno.h>
+#include <syslog.h>
 
 #include "utils/macro.h"
 #include "threadpool/threadpool.h"
 #include "threadpool/threadpool_task.h"
 //#include "utils/helpers.h"
-#include "utils/log.h"
 #include "proto/mpeg2ts.h"
 #include "utils/mem_utils.h"
 #include "utils/xml.h"

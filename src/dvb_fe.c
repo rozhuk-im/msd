@@ -42,13 +42,13 @@
 #include <string.h> /* bcopy, bzero, memcpy, memmove, memset, strerror... */
 #include <time.h>
 #include <errno.h>
+#include <syslog.h>
 
 #include "utils/macro.h"
 #include "utils/mem_utils.h"
 #include "threadpool/threadpool.h"
 #include "threadpool/threadpool_task.h"
 #include "utils/sys.h"
-#include "utils/log.h"
 #include "utils/xml.h"
 
 #include "dvb_fe.h"
@@ -251,27 +251,27 @@ err_out:
 		memcpy(&dvb_fe->state.status, &ev.status, sizeof(fe_status_t));
 		memcpy(&dvb_fe->state.parameters, &ev.parameters, sizeof(struct dvb_frontend_parameters));
 
-		LOG_INFO("Event process...");
+		SYSLOGD_EX(LOG_DEBUG, "Event process...");
 		if (FE_HAS_SIGNAL & ev.status) {
-			LOG_INFO("FE_HAS_SIGNAL");
+			SYSLOGD_EX(LOG_DEBUG, "FE_HAS_SIGNAL");
 		}
 		if (FE_HAS_CARRIER & ev.status) {
-			LOG_INFO("FE_HAS_CARRIER");
+			SYSLOGD_EX(LOG_DEBUG, "FE_HAS_CARRIER");
 		}
 		if (FE_HAS_VITERBI & ev.status) {
-			LOG_INFO("FE_HAS_VITERBI");
+			SYSLOGD_EX(LOG_DEBUG, "FE_HAS_VITERBI");
 		}
 		if (FE_HAS_SYNC & ev.status) {
-			LOG_INFO("FE_HAS_SYNC");
+			SYSLOGD_EX(LOG_DEBUG, "FE_HAS_SYNC");
 		}
 		if (FE_HAS_LOCK & ev.status) {
-			LOG_INFO("FE_HAS_LOCK");
+			SYSLOGD_EX(LOG_DEBUG, "FE_HAS_LOCK");
 		}
 		if (FE_TIMEDOUT & ev.status) {
-			LOG_INFO("FE_TIMEDOUT");
+			SYSLOGD_EX(LOG_DEBUG, "FE_TIMEDOUT");
 		}
 		if (FE_REINIT & ev.status) {
-			LOG_INFO("FE_REINIT");
+			SYSLOGD_EX(LOG_DEBUG, "FE_REINIT");
 		}
 
 		/* Report about state. */
@@ -444,47 +444,57 @@ dvb_fe_start(dvb_fe_p dvb_fe) {
 	fd = (uintptr_t)open(frontend_devname, O_RDWR);
 	if (((uintptr_t)-1) == fd) {
 		error = errno;
-		LOG_ERR_FMT(error, "failed to open '%s'", frontend_devname);
+		SYSLOG_ERR(LOG_CRIT, error, "Failed to open '%s'.",
+		    frontend_devname);
 		return (error);
 	}
 	/* Make nonblocking. */
 	error = fd_set_nonblocking(fd, 1);
 	if (0 != error) {
-		LOG_ERR_FMT(error, "failed to fd_set_nonblocking() for '%s'", frontend_devname);
+		SYSLOG_ERR(LOG_CRIT, error,
+		    "Failed to fd_set_nonblocking() for '%s'.",
+		    frontend_devname);
 		goto err_out;
 	}
 
-	LOGD_INFO_FMT("Tuner %"PRIu32", frontend %"PRIu32"...",
+	SYSLOGD(LOG_INFO, "Tuner %"PRIu32", frontend %"PRIu32"...",
 	    dvb_fe->adapter_idx, dvb_fe->fe_idx);
 
 	/* Get DVB API version. */
 	dvb_fe_props_clr(&cmdseq);
 	dvb_fe_props_add(&cmdseq, DTV_API_VERSION);
 	if (-1 == ioctl((int)fd, FE_GET_PROPERTY, &cmdseq)) {
-		LOGD_INFO("DVBv3: FE_GET_PROPERTY(DTV_API_VERSION) fail, assume DVB API 3.");
+		syslog(LOG_INFO,
+		    "DVBv3: FE_GET_PROPERTY(DTV_API_VERSION) fail, assume DVB API 3.");
 		prop[0].u.data = 0x0300;
 	}
 	dvb_fe->state.dvb_api_ver = prop[0].u.data;
-	LOG_INFO_FMT("Tuner %"PRIu32", frontend %"PRIu32": DVB API ver: %"PRIu8".%"PRIu8,
+	SYSLOGD(LOG_INFO,
+	    "Tuner %"PRIu32", frontend %"PRIu32": DVB API ver: %"PRIu8".%"PRIu8,
 	    dvb_fe->adapter_idx, dvb_fe->fe_idx,
 	    ((dvb_fe->state.dvb_api_ver >> 8) & 0xff),
 	    (dvb_fe->state.dvb_api_ver & 0xff));
 
 	/* Get frontend info. */
 	if (-1 == ioctl((int)fd, FE_GET_INFO, &dvb_fe->state.info)) {
-		LOG_ERR_FMT(errno, "Tuner %"PRIu32", frontend %"PRIu32": FE_GET_INFO fail.",
+		SYSLOG_ERR(LOG_CRIT, errno,
+		    "Tuner %"PRIu32", frontend %"PRIu32": FE_GET_INFO fail.",
 		    dvb_fe->adapter_idx, dvb_fe->fe_idx);
 		goto err_out;
 	}
-	LOG_INFO_FMT("Tuner %"PRIu32", frontend %"PRIu32": name: '%s'",
-	    dvb_fe->adapter_idx, dvb_fe->fe_idx, dvb_fe->state.info.name);
+	syslog(LOG_INFO,
+	    "Tuner %"PRIu32", frontend %"PRIu32": DVB API ver: %"PRIu8".%"PRIu8,
+	    dvb_fe->adapter_idx, dvb_fe->fe_idx,
+	    ((dvb_fe->state.dvb_api_ver >> 8) & 0xff),
+	    (dvb_fe->state.dvb_api_ver & 0xff));
 
 	/* Get delivery system mask.*/
 #ifdef DVB_USE_S2API
 	dvb_fe_props_clr(&cmdseq);
 	dvb_fe_props_add(&cmdseq, DTV_ENUM_DELSYS);
 	if (-1 == ioctl((int)fd, FE_GET_PROPERTY, &cmdseq)) {
-		LOG_ERR_FMT(errno, "Tuner %"PRIu32", frontend %"PRIu32": DVBv5: FE_GET_PROPERTY(DTV_ENUM_DELSYS) fail.",
+		SYSLOG_ERR(LOG_WARNING, errno,
+		    "Tuner %"PRIu32", frontend %"PRIu32": DVBv5: FE_GET_PROPERTY(DTV_ENUM_DELSYS) fail.",
 		    dvb_fe->adapter_idx, dvb_fe->fe_idx);
 	} else { /* Store result to mask. */
 		for (i = 0; i < prop[0].u.buffer.len; i ++) {
@@ -498,7 +508,8 @@ dvb_fe_start(dvb_fe_p dvb_fe) {
 	}
 	if (0 == dvb_fe->state.delivery_sys_mask) {
 		error = EINVAL;
-		LOG_ERR_FMT(error, "Tuner %"PRIu32", frontend %"PRIu32": delivery system detection fail.",
+		SYSLOG_ERR(LOG_CRIT, error,
+		"Tuner %"PRIu32", frontend %"PRIu32": delivery system detection fail.",
 		    dvb_fe->adapter_idx, dvb_fe->fe_idx);
 		goto err_out;
 	}
@@ -506,7 +517,7 @@ dvb_fe_start(dvb_fe_p dvb_fe) {
 	for (i = 0; i < SYS_DVB__COUNT__; i ++) {
 		if (0 == UINT32_BIT_IS_SET(dvb_fe->state.delivery_sys_mask, i))
 			continue; /* Skip unsupported. */
-		LOG_INFO_FMT("Tuner %"PRIu32", frontend %"PRIu32": delivery system: %s",
+		syslog(LOG_INFO, "Tuner %"PRIu32", frontend %"PRIu32": delivery system: %s.",
 		    dvb_fe->adapter_idx, dvb_fe->fe_idx, get_dvb_delsys(i));
 	}
 
@@ -518,7 +529,8 @@ dvb_fe_start(dvb_fe_p dvb_fe) {
 	    TP_TASK_F_CLOSE_ON_DESTROY, TP_EV_READ, 0,
 	    dvb_fe_event_recv_cb, dvb_fe, &dvb_fe->tptask);
 	if (0 != error) {
-		LOG_ERR_FMT(error, "Tuner %"PRIu32", frontend %"PRIu32" - tp_task_notify_create() failed.",
+		SYSLOG_ERR(LOG_CRIT, error,
+		    "Tuner %"PRIu32", frontend %"PRIu32" - tp_task_notify_create() failed.",
 		    dvb_fe->adapter_idx, dvb_fe->fe_idx);
 		goto err_out;
 	}
@@ -526,7 +538,8 @@ dvb_fe_start(dvb_fe_p dvb_fe) {
 	/* Reset tuner. */
 	error = dvb_fe_clear(fd);
 	if (0 != error) {
-		LOG_ERR_FMT(error, "Tuner %"PRIu32", frontend %"PRIu32" - dvb_fe_clear() failed.",
+		SYSLOG_ERR(LOG_CRIT, error,
+		    "Tuner %"PRIu32", frontend %"PRIu32" - dvb_fe_clear() failed.",
 		    dvb_fe->adapter_idx, dvb_fe->fe_idx);
 		goto err_out;
 	}
@@ -580,11 +593,11 @@ dvb_fe_tune(dvb_fe_p dvb_fe) {
 		return (EINVAL);
 
 	if (0 == UINT32_BIT_IS_SET(dvb_fe->state.delivery_sys_mask, dvb_fe->s.delivery_sys)) {
-		error = EINVAL;
-		LOG_ERR_FMT(error, "Tuner %"PRIu32", frontend %"PRIu32" - does not support delivery system %i - %s.",
+		syslog(LOG_ERR,
+		    "Tuner %"PRIu32", frontend %"PRIu32" - does not support delivery system %i - %s.",
 		    dvb_fe->adapter_idx, dvb_fe->fe_idx,
 		    dvb_fe->s.delivery_sys, get_dvb_delsys(dvb_fe->s.delivery_sys));
-		return (error);
+		return (EINVAL);
 	}
 
 #ifdef DVB_USE_S2API
@@ -606,16 +619,17 @@ dvb_fe_tune(dvb_fe_p dvb_fe) {
 	if (-1 != ioctl((int)tp_task_ident_get(dvb_fe->tptask), FE_SET_PROPERTY, &cmdseq))
 		return (0); /* Ok. */
 	/* Error. */
-	LOG_ERR_FMT(error, "Tuner %"PRIu32", frontend %"PRIu32" - DVBv5 FE_SET_PROPERTY DTV_TUNE fail.",
+	SYSLOG_ERR(LOG_WARNING, errno,
+	    "Tuner %"PRIu32", frontend %"PRIu32" - DVBv5 FE_SET_PROPERTY DTV_TUNE fail. Fallback to old API.",
 	    dvb_fe->adapter_idx, dvb_fe->fe_idx);
 	/* Fallback to old API. */
 #endif
 	if (dvb_fe->s.stream_id != NO_STREAM_ID_FILTER &&
 	    dvb_fe->s.stream_id != 0) {
-		error = EINVAL;
-		LOG_ERR_FMT(error, "Tuner %"PRIu32", frontend %"PRIu32" - DVBv3 does not support stream_id (PLP).",
+		syslog(LOG_ERR,
+		    "Tuner %"PRIu32", frontend %"PRIu32" - DVBv3 does not support stream_id (PLP).",
 		    dvb_fe->adapter_idx, dvb_fe->fe_idx);
-		return (error);
+		return (EINVAL);
 	}
 	mem_bzero(&feparams, sizeof(struct dvb_frontend_parameters));
 	feparams.frequency = dvb_fe->frequency;
@@ -649,23 +663,20 @@ dvb_fe_tune(dvb_fe_p dvb_fe) {
 		feparams.u.vsb.modulation = dvb_fe->s.modulation;
 		break;
 	default:
-		error = EINVAL;
-		LOG_ERR_FMT(error, "Tuner %"PRIu32", frontend %"PRIu32" - DVBv3 does not support delivery system %i - %s.",
+		syslog(LOG_ERR,
+		    "Tuner %"PRIu32", frontend %"PRIu32" - DVBv3 does not support delivery system %i - %s.",
 		    dvb_fe->adapter_idx, dvb_fe->fe_idx,
 		    dvb_fe->s.delivery_sys, get_dvb_delsys(dvb_fe->s.delivery_sys));
-		return (error);
+		return (EINVAL);
 	}
 
 	if (-1 != ioctl((int)tp_task_ident_get(dvb_fe->tptask), FE_SET_FRONTEND, &feparams))
 		return (0); /* Ok. */
 	/* Error. */
 	error = errno;
-	LOG_ERR_FMT(error, "Tuner %"PRIu32", frontend %"PRIu32" - DVBv3 FE_SET_FRONTEND fail.",
+	SYSLOG_ERR(LOG_ERR, error,
+	    "Tuner %"PRIu32", frontend %"PRIu32" - DVBv3 FE_SET_FRONTEND fail.",
 	    dvb_fe->adapter_idx, dvb_fe->fe_idx);
 
 	return (error);
 }
-
-
-
-

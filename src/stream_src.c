@@ -43,6 +43,7 @@
 #include <string.h> /* bcopy, bzero, memcpy, memmove, memset, strerror... */
 #include <time.h>
 #include <errno.h>
+#include <syslog.h>
 
 #include "utils/macro.h"
 #include "threadpool/threadpool.h"
@@ -52,7 +53,6 @@
 #include "net/utils.h"
 #include "utils/buf_str.h"
 #include "utils/ring_buffer.h"
-#include "utils/log.h"
 #include "proto/rtp.h"
 #include "proto/mpeg2ts.h"
 #include "utils/mem_utils.h"
@@ -178,7 +178,7 @@ str_src_timer_proc(str_src_p src, struct timespec *ts_now, struct timespec *ts_p
 		        join,
 			src->s.src_conn_params->mc.if_index,
 			&src->s.src_conn_params->mc.udp.addr);
-		    LOG_ERR(error, "skt_mc_join()");
+		    SYSLOG_ERR(LOG_ERR, error, "skt_mc_join().");
 		}
 	}
 
@@ -285,7 +285,7 @@ str_src_cust_hdrs_load(const uint8_t *buf, size_t buf_size,
 void
 str_src_settings_def(str_src_settings_p s_ret) {
 
-	LOGD_EV_FMT("... %zx", s_ret);
+	SYSLOGD_EX(LOG_DEBUG, "... %zx", (size_t)s_ret);
 
 	if (NULL == s_ret)
 		return;
@@ -318,7 +318,7 @@ str_src_xml_load_settings(const uint8_t *buf, size_t buf_size,
 	const uint8_t *data;
 	size_t data_size;
 
-	LOGD_EV_FMT("... %zx", s);
+	SYSLOGD_EX(LOG_DEBUG, "... %zx", (size_t)s);
 
 	if (NULL == buf || 0 == buf_size || NULL == s)
 		return (EINVAL);
@@ -465,7 +465,7 @@ int
 str_src_settings_copy(str_src_settings_p dst, str_src_settings_p src) {
 	int error;
 
-	LOGD_EV_FMT("... %zx <- %zx", dst, src);
+	SYSLOGD_EX(LOG_DEBUG, "... %zx <- %zx", (size_t)dst, (size_t)src);
 
 	if (NULL == dst || NULL == src)
 		return (EINVAL);
@@ -480,7 +480,7 @@ str_src_settings_copy(str_src_settings_p dst, str_src_settings_p src) {
 void
 str_src_settings_free_data(str_src_settings_p s) {
 
-	LOGD_EV_FMT("... %zx", s);
+	SYSLOGD_EX(LOG_DEBUG, "... %zx", (size_t)s);
 
 	if (NULL == s)
 		return;
@@ -550,7 +550,7 @@ str_src_conn_http_gen_request(const uint8_t *host, size_t host_size,
 	    "\r\n");
 
 	(*((uint8_t*)IO_BUF_FREE_GET(conn_http->req_buf))) = 0;
-	LOGD_EV_FMT("req out: size=%zu"
+	SYSLOGD_EX(LOG_DEBUG, "req out: size=%zu"
 	    "\n==========================================="
 	    "\n%s"
 	    "\n===========================================",
@@ -567,7 +567,7 @@ str_src_create(uint32_t type, str_src_settings_p s, tpt_p tpt,
 	int error;
 	str_src_p src;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == udata || NULL == tpt || NULL == src_ret)
 		return (EINVAL);
@@ -632,7 +632,7 @@ str_src_create(uint32_t type, str_src_settings_p s, tpt_p tpt,
 void
 str_src_init(str_src_p src) {
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == src)
 		return;
@@ -655,7 +655,7 @@ str_src_init(str_src_p src) {
 void
 str_src_destroy(str_src_p src) {
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == src)
 		return;
@@ -684,7 +684,7 @@ str_src_start(str_src_p src) {
 	str_src_conn_udp_p conn_udp;
 	int error;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == src)
 		return (EINVAL);
@@ -713,7 +713,7 @@ str_src_start(str_src_p src) {
 		}
 		if (0 != error) {
 			skt = (uintptr_t)-1;
-			LOG_ERR(error, "skt_mc_bind()");
+			SYSLOG_ERR(LOG_ERR, error, "skt_mc_bind().");
 			goto err_out;
 		}
 		if (STR_SRC_TYPE_MULTICAST == src->type ||
@@ -723,7 +723,7 @@ str_src_start(str_src_p src) {
 			    s->src_conn_params->mc.if_index,
 			    &conn_udp->addr);
 			if (0 != error) {
-				LOG_ERR(error, "skt_mc_join()");
+				SYSLOG_ERR(LOG_ERR, error, "skt_mc_join().");
 				goto err_out;
 			}
 		}
@@ -731,7 +731,8 @@ str_src_start(str_src_p src) {
 		error = skt_opts_apply_ex(skt, SO_F_UDP_BIND_AF_MASK,
 		    &s->skt_opts, conn_udp->addr.ss_family, NULL);
 		if (0 != error) {
-			LOG_ERR(error, "skt_opts_apply_ex(SO_F_UDP_BIND_AF_MASK) fail.");
+			SYSLOG_ERR(LOG_ERR, error,
+			    "skt_opts_apply_ex(SO_F_UDP_BIND_AF_MASK) fail.");
 			goto err_out;
 		}
 		/* Create IO task for socket. */
@@ -739,7 +740,7 @@ str_src_start(str_src_p src) {
 		    TP_TASK_F_CLOSE_ON_DESTROY, TP_EV_READ, 0, str_src_recv_mc_cb,
 		    src, &src->tptask);
 		if (0 != error) {
-			LOG_ERR(error, "tp_task_notify_create()");
+			SYSLOG_ERR(LOG_ERR, error, "tp_task_notify_create().");
 			goto err_out;
 		}
 		return (str_src_state_update(src, STR_SRC_STATE_DATA_WAITING, 0, 0));
@@ -755,7 +756,7 @@ err_out:
 	src->last_err = error;
 	str_src_state_update(src, STR_SRC_STATE_STOP,
 	    SRC_STATUS_SET_BIT, STR_SRC_STATUS_ERROR);
-	LOG_ERR(error, "...");
+	SYSLOG_ERR_EX(LOG_ERR, error, "...");
 	return (error);
 }
 
@@ -765,7 +766,7 @@ str_src_stop(str_src_p src) {
 	str_src_settings_p s;
 	int error;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == src)
 		return;
@@ -786,8 +787,7 @@ str_src_stop(str_src_p src) {
 		error = skt_mc_join(tp_task_ident_get(src->tptask), 0,
 		    s->src_conn_params->mc.if_index,
 		    &s->src_conn_params->udp.addr);
-		if (0 != error)
-			LOG_ERR(error, "skt_mc_join()");
+		SYSLOG_ERR(LOG_ERR, error, "skt_mc_join().");
 		break;
 	case STR_SRC_TYPE_TCP:
 	case STR_SRC_TYPE_TCP_HTTP:
@@ -805,7 +805,7 @@ str_src_stop(str_src_p src) {
 int
 str_src_restart(str_src_p src) {
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == src)
 		return (EINVAL);
@@ -822,7 +822,7 @@ str_src_connect(str_src_p src, int retry) {
 	char straddr[STR_ADDR_LEN];
 	sockaddr_storage_t addr, *cur_addr;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == src)
 		return (EINVAL);
@@ -844,12 +844,12 @@ str_src_connect(str_src_p src, int retry) {
 		conn_tcp->addr_index = 0;
 		sa_addr_port_to_str(&conn_tcp->addr[conn_tcp->addr_index], straddr,
 		    sizeof(straddr), NULL);
-		LOG_EV_FMT("Connecting to %s...", straddr);
+		syslog(LOG_INFO, "Connecting to %s...", straddr);
 		break;
 	case 1:  /* Retry connect to selected addr. */
 		sa_addr_port_to_str(&conn_tcp->addr[conn_tcp->addr_index], straddr,
 		    sizeof(straddr), NULL);
-		LOG_EV_FMT("Retry %"PRIu32"/%"PRIu32" connect to %s...",
+		syslog(LOG_INFO, "Retry %"PRIu64"/%"PRIu64" connect to %s...",
 		    conn_tcp->conn_try, conn_tcp->conn_try_count, straddr);
 		conn_tcp->conn_try ++;
 		if (conn_tcp->conn_try < conn_tcp->conn_try_count)
@@ -859,14 +859,14 @@ str_src_connect(str_src_p src, int retry) {
 	default:  /* Try connect to other addr. */
 		conn_tcp->addr_index ++;
 		if (conn_tcp->addr_index >= conn_tcp->addr_count) {
-			LOG_EV("Cant connect.");
+			syslog(LOG_INFO, "Cant connect.");
 			error = EADDRNOTAVAIL;
 			goto err_out;
 		}
 		conn_tcp->conn_try = 0;
 		sa_addr_port_to_str(&conn_tcp->addr[conn_tcp->addr_index], straddr,
 		    sizeof(straddr), NULL);
-		LOG_EV_FMT("Try connect to other addr: %s...", straddr);
+		syslog(LOG_INFO, "Try connect to other addr: %s...", straddr);
 	}
 
 	/* Check addr. */
@@ -882,7 +882,7 @@ str_src_connect(str_src_p src, int retry) {
 	error = skt_connect(cur_addr, SOCK_STREAM, IPPROTO_TCP,
 	    (SO_F_NONBLOCK), &skt);
 	if (0 != error) {
-		LOG_ERR(error, "skt_connect()");
+		SYSLOG_ERR(LOG_ERR, error, "skt_connect().");
 		goto err_out;
 	}
 	/* Create IO task for socket. */
@@ -890,7 +890,7 @@ str_src_connect(str_src_p src, int retry) {
 	    TP_TASK_F_CLOSE_ON_DESTROY, (conn_tcp->conn_timeout * 1000),
 	    str_src_connected, src, &src->tptask);
 	if (0 != error) {
-		LOG_ERR(error, "tp_task_create_connect()");
+		SYSLOG_ERR(LOG_ERR, error, "tp_task_create_connect().");
 		goto err_out;
 	}
 	return (str_src_state_update(src, STR_SRC_STATE_CONNECTING, 0, 0));
@@ -901,14 +901,14 @@ err_out:
 	src->last_err = error;
 	str_src_state_update(src, STR_SRC_STATE_STOP,
 	    SRC_STATUS_SET_BIT, STR_SRC_STATUS_ERROR);
-	LOG_ERR(error, "...");
+	SYSLOG_ERR_EX(LOG_ERR, error, "...");
 	return (error);
 }
 
 int
 str_src_connect_retry(str_src_p src) {
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == src)
 		return (EINVAL);
@@ -929,10 +929,10 @@ str_src_connected(tp_task_p tptask, int error, void *arg) {
 	str_src_p src = arg;
 	str_src_conn_http_p conn_http;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (0 != error) { /* Fail to connect. */
-		LOG_ERR(error, "...");
+		SYSLOG_ERR_EX(LOG_ERR, error, "...");
 		str_src_connect_retry(src);
 		src->last_err = error;
 		return (0);
@@ -943,7 +943,8 @@ str_src_connected(tp_task_p tptask, int error, void *arg) {
 	    (SO_F_TCP_ES_CONN_MASK & ~SO_F_HALFCLOSE_RDWR),
 	    &src->s.skt_opts, 0, NULL);
 	if (0 != error) {
-		LOG_ERR(error, "skt_opts_apply_ex(SO_F_TCP_ES_CONN_MASK & ~SO_F_HALFCLOSE_RDWR) fail.");
+		SYSLOG_ERR(LOG_NOTICE, error,
+		    "skt_opts_apply_ex(SO_F_TCP_ES_CONN_MASK & ~SO_F_HALFCLOSE_RDWR) fail.");
 		goto err_out;
 	}
 
@@ -963,7 +964,7 @@ str_src_connected(tp_task_p tptask, int error, void *arg) {
 		    (conn_http->tcp.conn_timeout * 1000), 0, conn_http->req_buf,
 		    str_src_send_http_req_done_cb);
 		if (0 != error) {
-			LOG_ERR(error, "tp_task_start()");
+			SYSLOG_ERR(LOG_ERR, error, "tp_task_start().");
 			goto err_out;
 		}
 		str_src_state_update(src, STR_SRC_STATE_DATA_REQ, 0, 0);
@@ -975,7 +976,7 @@ str_src_connected(tp_task_p tptask, int error, void *arg) {
 	return (TP_TASK_CB_NONE);
 err_out:
 	/* Error. */
-	LOG_ERR(error, "...");
+	SYSLOG_ERR_EX(LOG_ERR, error, "...");
 	str_src_stop(src);
 	src->last_err = error;
 	return (TP_TASK_CB_NONE);
@@ -986,13 +987,14 @@ str_src_send_http_req_done_cb(tp_task_p tptask, int error, io_buf_p buf __unused
     uint32_t eof, size_t transfered_size __unused, void *arg) {
 	str_src_p src = arg;
 
-	//LOGD_EV("...");
+	//SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (0 != error || 0 != eof) {
 err_out:
-		LOG_ERR(error, "on receive");
-		if (0 != eof)
-			LOG_EV_FMT("eof...");
+		SYSLOG_ERR(LOG_DEBUG, error, "On receive.");
+		if (0 != eof) {
+			SYSLOGD_EX(LOG_DEBUG, "eof...");
+		}
 		src->last_err = error;
 		str_src_connect_retry(src);
 		return (TP_TASK_CB_NONE); /* Receiver destroyed. */
@@ -1002,7 +1004,8 @@ err_out:
 
 	error = skt_opts_apply_ex(tp_task_ident_get(tptask),
 	    SO_F_HALFCLOSE_WR, &src->s.skt_opts, 0, NULL);
-	LOG_ERR(error, "skt_opts_apply_ex(SO_F_HALFCLOSE_WR) fail, not fatal.");
+	SYSLOG_ERR(LOG_NOTICE, error,
+	    "skt_opts_apply_ex(SO_F_HALFCLOSE_WR) fail, not fatal.");
 
 	/* Convert to "ready to read notifier". */
 	tp_task_tp_cb_func_set(tptask, tp_task_notify_handler);
@@ -1011,7 +1014,7 @@ err_out:
 	    (tp_task_cb)((STR_SRC_TYPE_TCP_HTTP == src->type) ?
 	    str_src_recv_http_cb : str_src_recv_tcp_cb));
 	if (0 != error) {
-		LOG_ERR(error, "tp_task_start()");
+		SYSLOG_ERR(LOG_ERR, error, "tp_task_start().");
 		goto err_out;
 	}
 	str_src_state_update(src, STR_SRC_STATE_DATA_WAITING, 0, 0);
@@ -1029,13 +1032,14 @@ str_src_recv_http_cb(tp_task_p tptask, int error, uint32_t eof,
 	http_resp_line_data_t resp_data;
 	struct timespec	ts;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (0 != error || 0 != eof) {
 err_out:
-		LOG_ERR(error, "on receive");
-		if (0 != eof)
-			LOG_EV_FMT("eof...");
+		SYSLOG_ERR(LOG_DEBUG, error, "On receive.");
+		if (0 != eof) {
+			SYSLOGD_EX(LOG_DEBUG, "eof...");
+		}
 		src->last_err = error;
 		//str_src_restart(src);
 		str_src_stop(src);
@@ -1081,7 +1085,7 @@ err_out:
 
 		ptm[0] = 0;
 		ptm += 4;
-		LOGD_EV_FMT("ans in: size = %zu, off = %zu"
+		SYSLOGD_EX(LOG_DEBUG, "ans in: size = %zu, off = %zu"
 		    "\n==========================================="
 		    "\n%s"
 		    "\n===========================================",
@@ -1090,7 +1094,7 @@ err_out:
 		if (0 != mpeg2_ts_pkt_get_next(buf, src->r_buf_w_off,
 		    (size_t)(ptm - buf), MPEG2_TS_PKT_SIZE_188, &ptm)) {
 			if (ptm != ptm2) {
-				LOGD_EV_FMT("!!!!!!!!ptm != ptm2!!!!!!!!!!");
+				SYSLOGD_EX(LOG_DEBUG, "!!!!!!!!ptm != ptm2!!!!!!!!!!");
 			}
 			buf_size = (size_t)((buf + src->r_buf_w_off) - ptm);
 			memmove(buf, ptm, buf_size);
@@ -1103,7 +1107,7 @@ err_out:
 		break;
 	} /* end recv while */
 	if (0 != error) {
-		LOG_ERR(error, "recv()");
+		SYSLOG_ERR(LOG_NOTICE, error, "recv().");
 		src->last_err = error;
 		if (0 == transfered_size)
 			goto rcv_next;
@@ -1129,9 +1133,9 @@ str_src_recv_tcp_cb(tp_task_p tptask, int error, uint32_t eof,
 	if (0 != error || 0 != eof) {
 err_out:
 		src->last_err = error;
-		LOG_ERR(error, "on receive");
+		SYSLOG_ERR(LOG_DEBUG, error, "On receive.");
 		if (0 != eof) {
-			LOG_EV("eof...");
+			SYSLOGD_EX(LOG_DEBUG, "eof...");
 		}
 		str_src_restart(src);
 		//str_src_stop(src);
@@ -1168,8 +1172,9 @@ err_out:
 		}
 		if (0 == ios) {
 			if (0 == buf_size) {
-				LOG_EV("buf_size calc BUG, please report!");
-				LOGD_EV_FMT("0 == ios, error = %i, buf_size = %zu, r_buf_w_off = %zu, subb = %zu, res = %zu...",
+				syslog(LOG_NOTICE, "buf_size calc BUG, please report!");
+				SYSLOGD_EX(LOG_DEBUG,
+				    "0 == ios, error = %i, buf_size = %zu, r_buf_w_off = %zu, subb = %zu, res = %zu...",
 				    errno, tm, src->r_buf_w_off, (tm % MPEG2_TS_PKT_SIZE_188), buf_size);
 				str_src_restart(src);
 				return (TP_TASK_CB_NONE); /* Receiver destroyed. */
@@ -1180,7 +1185,8 @@ err_out:
 		ios += src->r_buf_w_off;
 		if (MPEG2_TS_PKT_SIZE_188 > (size_t)ios) {
 			src->r_buf_w_off = (size_t)ios;
-			LOGD_EV_FMT("...r_buf_w_off = %zu", src->r_buf_w_off);
+			SYSLOGD_EX(LOG_DEBUG, "...r_buf_w_off = %zu.",
+			    src->r_buf_w_off);
 			continue; /* Packet to small, continue receive. */
 		}
 		str_src_r_buf_add(src, &ts, buf, (size_t)ios);
@@ -1213,7 +1219,7 @@ str_src_recv_mc_cb(tp_task_p tptask, int error, uint32_t eof __unused,
 
 	if (0 != error) {
 err_out:
-		LOG_ERR(error, "on receive");
+		SYSLOG_ERR(LOG_DEBUG, error, "On receive.");
 		str_src_stop(src);
 		src->last_err = error;
 		str_src_state_update(src, STR_SRC_STATE_STOP,
@@ -1256,7 +1262,7 @@ err_out:
 		if (MPEG2_TS_HDR_IS_VALID((mpeg2_ts_hdr_p)buf)) { /* Test_ for RTP. */
 			buf_size = (size_t)ios;
 		} else if (0 == rtp_payload_get(buf, (size_t)ios, &start_off, &end_off)) {
-			//LOGD_EV_FMT("RTP sn = %i", ((rtp_hdr_p)buf)->seq);
+			//SYSLOGD_EX(LOG_DEBUG, "RTP sn = %i.", ((rtp_hdr_p)buf)->seq);
 			/* XXX skip payload bulk data. */
 			if (P_MPGA == ((rtp_hdr_p)buf)->pt ||
 			    P_MPGV == ((rtp_hdr_p)buf)->pt) {
@@ -1287,7 +1293,7 @@ err_out:
 		str_src_r_buf_add(src, &ts, buf, buf_size);
 	} /* end recv while */
 	if (0 != error) {
-		LOG_ERR(error, "recv()");
+		SYSLOG_ERR(LOG_NOTICE, error, "recv().");
 		if (0 == transfered_size)
 			goto rcv_next;
 	}
@@ -1330,7 +1336,7 @@ str_src_r_buf_f_name_gen(str_src_p src) {
 		    "%s/msd-%zu-%s.tmp",
 		    src->s.r_buf_f_path, (size_t)getpid(), hash);
 	}
-	LOGD_EV_FMT("r_buf_f_name: %s", src->r_buf_f_name);
+	SYSLOGD_EX(LOG_DEBUG, "r_buf_f_name: %s.", src->r_buf_f_name);
 }
 
 int
@@ -1353,20 +1359,21 @@ shm_open_retry:
 			error = errno;
 			if (EEXIST == error) /* Try genereate another name. */
 				goto shm_open_retry;
-			LOG_ERR(error, "shm_open()");
+			SYSLOG_ERR(LOG_ERR, error, "shm_open(%s).", src->r_buf_f_name);
 			return (error);
 		}
 		/* Lock mem in real file. */
 		if (0 == (STR_SRC_S_F_ENABLE_RING_BUF_SHM_FILE & src->s.flags)) {
 			if (0 != flock((int)src->r_buf_fd, LOCK_EX)) {
-				LOG_ERR_FMT(errno, "flock(): %s", src->r_buf_f_name);
+				SYSLOG_ERR(LOG_NOTICE, errno, "flock(%s).",
+				    src->r_buf_f_name);
 			}
 		}
-			
+
 		/* Truncate it to the correct size */
 		if (0 != ftruncate((int)src->r_buf_fd, (off_t)src->s.ring_buf_size)) {
 			error = errno;
-			LOG_ERR_FMT(error, "ftruncate(): %s, %zu",
+			SYSLOG_ERR(LOG_ERR, error, "ftruncate(%s, %zu).",
 			    src->r_buf_f_name, src->s.ring_buf_size);
 err_out:
 			flock((int)src->r_buf_fd, LOCK_UN);
@@ -1384,7 +1391,7 @@ err_out:
 	    MPEG2_TS_PKT_SIZE_MIN);
 	if (NULL == src->r_buf) {
 		error = ENOMEM;
-		LOG_ERR(error, "r_buf_alloc()");
+		SYSLOG_ERR(LOG_ERR, error, "r_buf_alloc().");
 		goto err_out;
 	}
 	return (0);

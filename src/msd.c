@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011 - 2021 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2011-2024 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,6 +43,7 @@
 #include <stdlib.h> /* malloc, exit */
 #include <unistd.h> /* close, write, sysconf */
 #include <fcntl.h> /* open, fcntl */
+#include <syslog.h>
 
 #include "utils/mem_utils.h"
 #include "utils/str2num.h"
@@ -58,7 +59,6 @@
 #include "threadpool/threadpool_task.h"
 #include "utils/buf_str.h"
 #include "utils/sys.h"
-#include "utils/log.h"
 #include "proto/http_server.h"
 #include "utils/info.h"
 #include "utils/cmd_line_daemon.h"
@@ -353,7 +353,7 @@ msd_channel_load(prog_settings_p ps, const uint8_t *cfg_file_buf, size_t cfg_fil
 	memcpy((hub_name + 9), ptm, tm);
 	hub_name_size = (tm + 9);
 	hub_name[hub_name_size] = 0;
-	LOG_INFO_FMT("Channel name: %s", hub_name);
+	syslog(LOG_NOTICE, "Channel name: %s", hub_name);
 
 	/* Stream hub params. */
 	str_hub_settings_def(hub_params);
@@ -373,7 +373,8 @@ msd_channel_load(prog_settings_p ps, const uint8_t *cfg_file_buf, size_t cfg_fil
 	error = str_hub_send_msg(ps->shbskt, hub_name, hub_name_size,
 	    STR_HUB_CMD_CREATE, hub_params, sizeof(hub_params));
 	if (0 != error) {
-		LOG_ERR_FMT(error, "%s: str_hub_send_msg(STR_HUB_CMD_CREATE)", hub_name);
+		SYSLOG_ERR(LOG_ERR, error,
+		    "%s: str_hub_send_msg(STR_HUB_CMD_CREATE).", hub_name);
 		goto err_out;
 	}
 
@@ -397,7 +398,8 @@ msd_channel_load(prog_settings_p ps, const uint8_t *cfg_file_buf, size_t cfg_fil
 			free(src_params);
 			free(src_conn_params);
 			error = ENOMEM;
-			LOG_ERR_FMT(error, "%s: malloc(src_params) fail.", hub_name);
+			SYSLOG_ERR(LOG_ERR, error,
+			    "%s: malloc(src_params) fail.", hub_name);
 			continue;
 		}
 		/* Stream source params. */
@@ -425,7 +427,9 @@ msd_channel_load(prog_settings_p ps, const uint8_t *cfg_file_buf, size_t cfg_fil
 		error = str_hub_send_msg(ps->shbskt, hub_name, hub_name_size,
 		    STR_HUB_CMD_SRC_ADD, src_params, (size_t)tm32);
 		if (0 != error) {
-			LOG_ERR_FMT(error, "%s: str_hub_send_msg(STR_HUB_CMD_SRC_ADD)", hub_name);
+			SYSLOG_ERR(LOG_ERR, error,
+			    "%s: str_hub_send_msg(STR_HUB_CMD_SRC_ADD).",
+			    hub_name);
 			continue;
 		}
 	} /* End channel sources load. */
@@ -455,25 +459,26 @@ msd_load_timer_cb(tp_event_p ev, tp_udata_p tp_udata) {
 
 	/* Load channels. */
 	/* From main config. */
-	LOG_INFO("Load channels: from main config.");
+	syslog(LOG_NOTICE, "Load channels: from main config.");
 	cur_pos = NULL;
 	while (0 == MSD_CFG_GET_VAL_DATA(&cur_pos, &data, &data_size,
 	    "channelList", "channel", NULL)) {
 		msd_channel_load(ps, cfg_file_buf, cfg_file_buf_size, data, data_size);
 	}
 	/* From included configs. */
-	LOG_INFO("Load channels: from included configs.");
+	syslog(LOG_NOTICE, "Load channels: from included configs.");
 	cur_pos = NULL;
 	while (0 == MSD_CFG_GET_VAL_DATA(&cur_pos, &ptm, &tm,
 	    "channelList", "includeFile", NULL)) {
 		data_size = MIN((sizeof(strbuf) - 1), tm);
 		memcpy(strbuf, ptm, data_size);
 		strbuf[data_size] = 0;
-		LOG_INFO_FMT("Load channels: from \"%s\"", strbuf);
+		syslog(LOG_NOTICE, "Load channels: from \"%s\"", strbuf);
 		error = read_file((const char*)ptm, tm, 0, 0, CFG_FILE_MAX_SIZE,
 		    (uint8_t**)&data, &data_size);
 		if (0 != error) {
-			LOG_ERR_FMT(error, "Load channels: FAIL from \"%s\"", strbuf);
+			SYSLOG_ERR(LOG_ERR, error,
+			    "Load channels: FAIL from \"%s\".", strbuf);
 			error = 0;
 			continue;
 		}
@@ -492,7 +497,6 @@ msd_load_timer_cb(tp_event_p ev, tp_udata_p tp_udata) {
 int
 main(int argc, char *argv[]) {
 	int error = 0;
-	int log_fd = -1;
 	uint8_t *cfg_file_buf = NULL;
 	size_t tm, cfg_file_buf_size = 0;
 	tp_p tp;
@@ -509,61 +513,47 @@ main(int argc, char *argv[]) {
 	}
 	if (0 != cmd_line_data.daemon) {
 		make_daemon();
+		openlog(PACKAGE_NAME,
+		    (LOG_NDELAY | LOG_PID | ((0 != cmd_line_data.verbose) ? LOG_PERROR : 0)),
+		    LOG_DAEMON);
+	} else {
+		openlog(PACKAGE_NAME,
+		    (LOG_NDELAY | LOG_PID | LOG_PERROR), LOG_USER);
 	}
+	setlogmask(LOG_UPTO(cmd_line_data.log_level));
 
     { // process config file
 	const uint8_t *data;
-	char strbuf[1024];
 	size_t data_size;
 	tp_settings_t tp_s;
 	http_srv_settings_t http_s;
 
-	g_log_fd = (uintptr_t)open("/dev/stderr", (O_WRONLY | O_APPEND));
 	error = read_file(cmd_line_data.cfg_file_name, 0, 0, 0,
 	    CFG_FILE_MAX_SIZE, &cfg_file_buf, &cfg_file_buf_size);
 	if (0 != error) {
-		LOG_ERR(error, "config read_file()");
+		SYSLOG_ERR(LOG_CRIT, error, "config read_file().");
 		goto err_out;
 	}
 	if (0 != xml_get_val_args(cfg_file_buf, cfg_file_buf_size,
 	    NULL, NULL, NULL, NULL, NULL,
 	    (const uint8_t*)"msd", NULL)) {
-		LOG_INFO("Config file XML format invalid.");
+		syslog(LOG_CRIT, "Config file XML format invalid.");
 		goto err_out;
 	}
-	g_data.cfg_file_buf = cfg_file_buf;
-	g_data.cfg_file_buf_size = cfg_file_buf_size;
 
-	/* Log file */
-	if (0 == cmd_line_data.verbose &&
-	    0 == MSD_CFG_GET_VAL_DATA(NULL, &data, &data_size,
-	    "log", "file", NULL)) {
-		if (sizeof(strbuf) > data_size) {
-			memcpy(strbuf, data, data_size);
-			strbuf[data_size] = 0;
-			log_fd = open(strbuf,
-			    (O_WRONLY | O_APPEND | O_CREAT), 0644);
-			if (-1 == log_fd) {
-				LOG_ERR(errno, "Fail to open log file.");
-			}
-		} else {
-			LOG_ERR(EINVAL, "Log file name too long.");
-		}
-	} else if (0 != cmd_line_data.verbose) {
-		log_fd = open("/dev/stdout", (O_WRONLY | O_APPEND));
+	/* Log level. */
+	if (0 == MSD_CFG_GET_VAL_UINT(NULL, (uint32_t*)&cmd_line_data.log_level,
+	    "log", "level", NULL)) {
+		setlogmask(LOG_UPTO(cmd_line_data.log_level));
 	}
-	close((int)g_log_fd);
-	g_log_fd = (uintptr_t)log_fd;
-	fd_set_nonblocking(g_log_fd, 1);
-	log_write("\n\n\n\n", 4);
-	LOG_INFO(PACKAGE_STRING": started");
+	syslog(LOG_NOTICE, PACKAGE_STRING": started!");
 #ifdef DEBUG
-	LOG_INFO("Build: "__DATE__" "__TIME__", DEBUG");
+	syslog(LOG_INFO, "Build: "__DATE__" "__TIME__", DEBUG.");
 #else
-	LOG_INFO("Build: "__DATE__" "__TIME__", Release");
+	syslog(LOG_INFO, "Build: "__DATE__" "__TIME__", Release.");
 #endif
-	LOG_INFO_FMT("CPU count: %d", get_cpu_count());
-	LOG_INFO_FMT("descriptor table size: %d (max files)", getdtablesize());
+	syslog(LOG_INFO, "CPU count: %d.", get_cpu_count());
+	syslog(LOG_INFO, "Descriptor table size: %d (max files).", getdtablesize());
 	
 	/* System resource limits. */
 	if (0 == MSD_CFG_GET_VAL_DATA(NULL, &data, &data_size,
@@ -579,7 +569,7 @@ main(int argc, char *argv[]) {
 	}
 	error = tp_create(&tp_s, &tp);
 	if (0 != error) {
-		LOG_ERR(error, "tp_create()");
+		SYSLOG_ERR(LOG_CRIT, error, "tp_create().");
 		goto err_out;
 	}
 	tp_threads_create(tp, 1);// XXX exit rewrite
@@ -587,14 +577,14 @@ main(int argc, char *argv[]) {
 
 	error = str_hubs_bckt_create(tp, PACKAGE_NAME"/"PACKAGE_VERSION, &shbskt);
 	if (0 != error) {
-		LOG_ERR(error, "str_hubs_bckt_create()");
+		SYSLOG_ERR(LOG_CRIT, error, "str_hubs_bckt_create().");
 		goto err_out;
 	}
 
 	/* HTTP server settings. */
 	/* Read from config. */
 	if (0 != MSD_CFG_GET_VAL_DATA(NULL, &data, &data_size, "HTTP", NULL)) {
-		LOG_INFO("No HTTP server settings, nothink to do...");
+		syslog(LOG_NOTICE, "No HTTP server settings, nothink to do...");
 		goto err_out;
 	}
 	http_srv_def_settings(1, PACKAGE_NAME"/"PACKAGE_VERSION, 1, &http_s);
@@ -607,7 +597,7 @@ main(int argc, char *argv[]) {
 	error = http_srv_xml_load_start(data, data_size, tp,
 	    NULL, NULL, &http_s, &g_data, &http_srv);
  	if (0 != error) {
-		LOG_ERR(error, "http_srv_xml_load_start()");
+		SYSLOG_ERR(LOG_CRIT, error, "http_srv_xml_load_start().");
 		goto err_out;
 	}
    
@@ -653,7 +643,7 @@ main(int argc, char *argv[]) {
 	error = tpt_ev_add_args(tp_thread_get(tp, 0), TP_EV_TIMER,
 	    (TP_F_ONESHOT), 0, 100, &g_data.load_tmr);
 	if (0 != error) {
-		LOGD_ERR(error, "tpt_ev_add_args()");
+		SYSLOG_ERR(LOG_CRIT, error, "tpt_ev_add_args().");
 		goto err_out;
 	}
     } /* Done with config. */
@@ -707,8 +697,8 @@ main(int argc, char *argv[]) {
 	}
 
 	tp_destroy(g_data.tp);
-	LOG_INFO("exiting.");
-	close((int)g_data.log_fd);
+	syslog(LOG_NOTICE, "Exiting.");
+	closelog();
 	free(cfg_file_buf);
 
 err_out:
@@ -794,7 +784,7 @@ msd_hub_attach_cli(str_hubs_bckt_p shbskt, const uint8_t *name, size_t name_size
 	str_hub_cli_attach_data_p attach_data = NULL;
 	uint8_t hub_name[STR_HUB_NAME_MAX_SIZE];
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == name || 0 == name_size || NULL == cli)
 		return (EINVAL);
@@ -813,14 +803,15 @@ msd_hub_attach_cli(str_hubs_bckt_p shbskt, const uint8_t *name, size_t name_size
 		return (error);
 	}
 
-	if (0 != LOGD_IS_ENABLED()) {
-		tm = MIN((sizeof(hub_name) - 1), name_size);
-		memcpy(hub_name, name, tm);
-		hub_name[tm] = 0;
+#ifdef DEBUG
+	tm = MIN((sizeof(hub_name) - 1), name_size);
+	memcpy(hub_name, name, tm);
+	hub_name[tm] = 0;
 
-		LOGD_INFO_FMT("%s - : attach..., snd_block_min_size = %zu, precache = %zu",
-		    hub_name, strh_cli->snd_block_min_size, strh_cli->precache);
-	}
+	syslog(LOG_DEBUG,
+	    "%s - : attach..., snd_block_min_size = %zu, precache = %zu.",
+	    hub_name, strh_cli->snd_block_min_size, strh_cli->precache);
+#endif
 
 	if (NULL == attach_data) {
 		error = str_hub_send_msg(shbskt, name, name_size,
@@ -837,7 +828,8 @@ msd_hub_attach_cli(str_hubs_bckt_p shbskt, const uint8_t *name, size_t name_size
 		tm = MIN((sizeof(hub_name) - 1), name_size);
 		memcpy(hub_name, name, tm);
 		hub_name[tm] = 0;
-		LOG_ERR_FMT(error, "%s: str_hub_send_msg(STR_HUB_CMD_CLI_ADD)", hub_name);
+		SYSLOG_ERR(LOG_ERR, error,
+		    "%s: str_hub_send_msg(STR_HUB_CMD_CLI_ADD).", hub_name);
 		return (error);
 	}
 	/* Do not read/write to stream hub client, stream hub is new owner! */
@@ -858,7 +850,7 @@ msd_http_req_url_parse(int type, http_srv_req_p req,
 	char straddr[STR_ADDR_LEN], ifname[(IFNAMSIZ + 1)];
 	sockaddr_storage_t ss;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == req || NULL == hub_name || 0 == hub_name_size)
 		return (500);
@@ -984,7 +976,7 @@ msd_http_srv_on_conn_cb(http_srv_bind_p acc __unused, void *srv_udata __unused,
     uintptr_t skt __unused, sockaddr_storage_p addr __unused,
     tpt_p *tpt __unused, http_srv_cli_ccb_p ccb __unused, void **udata __unused) {
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	return (HTTP_SRV_CB_CONTINUE);
 }
@@ -993,7 +985,7 @@ void
 msd_http_srv_on_destroy_cb(http_srv_cli_p cli __unused, void *udata,
     http_srv_resp_p resp __unused) {
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL != udata) {
 		((str_hub_cli_p)udata)->udata = NULL;
@@ -1017,7 +1009,7 @@ msd_http_srv_on_req_rcv_cb(http_srv_cli_p cli, void *udata __unused,
 	static const char *cttype = 	"Content-Type: text/plain\r\n"
 					"Pragma: no-cache";
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (HTTP_REQ_METHOD_GET != req->line.method_code &&
 	    HTTP_REQ_METHOD_HEAD != req->line.method_code) {
@@ -1128,7 +1120,9 @@ err_out_dyn_client:
 			error = str_src_conn_http_gen_request(str_addr, str_addr_size,
 			    ptm, tm,  NULL, 0, &src_conn_params->http);
 			if (0 != error) {
-				LOG_ERR_FMT(error, "%s: str_src_conn_http_gen_request()", buf);
+				SYSLOG_ERR(LOG_ERR, error,
+				    "%s: str_src_conn_http_gen_request().",
+				    buf);
 				resp->status_code = 503;
 				goto err_out_dyn_client;
 			}
@@ -1182,7 +1176,7 @@ int
 msd_http_srv_on_rep_snd_cb(http_srv_cli_p cli __unused, void *udata,
     http_srv_resp_p resp __unused) {
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL != udata) {
 		((str_hub_cli_p)udata)->tptask = NULL;
@@ -1196,7 +1190,7 @@ int
 msd_str_hub_cli_free_cb(str_hub_cli_p strh_cli __unused, tp_task_p tptask __unused,
     void *udata) {
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL != udata) {
 		http_srv_cli_set_udata((http_srv_cli_p)udata, NULL);

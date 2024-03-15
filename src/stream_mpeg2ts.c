@@ -38,11 +38,11 @@
 #include <stdio.h> /* snprintf, fprintf */
 #include <time.h>
 #include <errno.h>
+#include <syslog.h>
 
 #include "utils/mem_utils.h"
 #include "proto/mpeg2ts.h"
 #include "math/crc32.h"
-#include "utils/log.h"
 #include "stream_mpeg2ts.h"
 
 #ifdef MPEG2TS_XML_CONFIG
@@ -108,35 +108,36 @@ int	mpeg2_ts_txt_dump_prog(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 
 
 #define M2TS_DUMP_MPEG2TS_HDR(ts_hdr)					\
-    LOGD_EV_FMT("MPEG2 TS header: TE = %hhi, PUS = %hhi, TP = %hhi, "	\
-    "PID = %"PRIu16", SC = %hhi, CP = %hhi, AFE = %hhi, CC = %hhi",	\
-    (ts_hdr)->te, (ts_hdr)->pus, (ts_hdr)->tp, MPEG2_TS_PID((ts_hdr)),	\
-    (ts_hdr)->sc, (ts_hdr)->cp, (ts_hdr)->afe, (ts_hdr)->cc)
+    SYSLOGD_EX(LOG_DEBUG,						\
+	"MPEG2 TS header: TE = %hhi, PUS = %hhi, TP = %hhi, "		\
+	"PID = %"PRIu16", SC = %hhi, CP = %hhi, AFE = %hhi, CC = %hhi",	\
+	(ts_hdr)->te, (ts_hdr)->pus, (ts_hdr)->tp, MPEG2_TS_PID((ts_hdr)), \
+	(ts_hdr)->sc, (ts_hdr)->cp, (ts_hdr)->afe, (ts_hdr)->cc)
 
 #define M2TS_DUMP_MPEG2TS_PSI_HDR(psi_hdr)				\
-    LOGD_EV_FMT("MPEG2 TS PSI header: tid = %"PRIu8", ss = %hhi, pr = %hhi, " \
+    SYSLOGD_EX(LOG_DEBUG,						\
+	"MPEG2 TS PSI header: tid = %"PRIu8", ss = %hhi, pr = %hhi, "	\
         "r0 = %hhi, sec_len = %"PRIu16"",				\
 	(psi_hdr)->tid, (psi_hdr)->ss, (psi_hdr)->pr, (psi_hdr)->r0,	\
 	MPEG2_PSI_TBL_SEC_LEN((psi_hdr)))
 
 #define M2TS_DUMP_MPEG2TS_PSI_SNTX(sntx)				\
-    LOGD_EV_FMT("MPEG2 TS PSI syntax: tid ext = %"PRIu16"(%"PRIu16"), "	\
+    SYSLOGD_EX(LOG_DEBUG,						\
+	"MPEG2 TS PSI syntax: tid ext = %"PRIu16"(%"PRIu16"), "		\
         "r0 = %hhi, ver = %hhi, cn = %hhi, sn = %"PRIu8", lsn = %"PRIu8"", \
 	(sntx)->tid_ext, ntohs((sntx)->tid_ext), (sntx)->r0, (sntx)->ver, \
 	(sntx)->cn, (sntx)->sn,	(sntx)->lsn)
 
 #define M2TS_DUMP_MPEG2TS_PES_HDR(pes_hdr)				\
-    LOGD_EV_FMT("MPEG2 TS PES header: sid = %x, len = %"PRIu16"",	\
+    SYSLOGD_EX(LOG_DEBUG,						\
+	"MPEG2 TS PES header: sid = %x, len = %"PRIu16"",		\
 	(pes_hdr)->sid, (pes_hdr)->len)
-
-
-
 
 
 void
 mpeg2_ts_def_settings(mpeg2_ts_settings_p s) {
 
-	LOGD_EV_FMT("... %zx", s);
+	SYSLOGD_EX(LOG_DEBUG, "... %zx", (size_t)s);
 
 	if (NULL == s)
 		return;
@@ -155,7 +156,7 @@ mpeg2_ts_xml_load_settings(const uint8_t *buf, size_t buf_size, mpeg2_ts_setting
 	size_t data_size;
 	uint32_t tm32, *pids_new;
 
-	LOGD_EV_FMT("... %zx", s);
+	SYSLOGD_EX(LOG_DEBUG, "... %zx", (size_t)s);
 
 	if (NULL == buf || 0 == buf_size || NULL == s)
 		return (EINVAL);
@@ -194,19 +195,21 @@ mpeg2_ts_xml_load_settings(const uint8_t *buf, size_t buf_size, mpeg2_ts_setting
 				continue;
 			}
 		}
-		LOG_EV_FMT("Try to add filtering PID %i, mem=%zx, count=%zu",
-		    tm32, s->pids_flt.pids, s->pids_flt.pids_count);
+		syslog(LOG_INFO,
+		    "Try to add filtering PID %i, mem=%zx, count=%zu.",
+		    tm32, (size_t)s->pids_flt.pids, s->pids_flt.pids_count);
 		pids_new = reallocarray(s->pids_flt.pids,
 		    (s->pids_flt.pids_count + 2), sizeof(uint32_t));
 		if (NULL == pids_new) {
-			LOG_ERR_FMT(errno, "fail to add filtering PID %i", tm32);
+			SYSLOG_ERR(LOG_ERR, errno, "fail to add filtering PID %i.", tm32);
 			continue;
 		}
 		s->pids_flt.pids = pids_new;
 		s->pids_flt.pids[s->pids_flt.pids_count] = tm32;
 		s->pids_flt.pids_count ++;
-		LOG_EV_FMT("Added filtering PID %i, mem=%zx, count=%zu",
-		    tm32, s->pids_flt.pids, s->pids_flt.pids_count);
+		syslog(LOG_INFO,
+		    "Added filtering PID %i, mem=%zx, count=%zu.",
+		    tm32, (size_t)s->pids_flt.pids, s->pids_flt.pids_count);
 	}
 
 	return (0);
@@ -216,7 +219,7 @@ mpeg2_ts_xml_load_settings(const uint8_t *buf, size_t buf_size, mpeg2_ts_setting
 int
 mpeg2_ts_settings_copy(mpeg2_ts_settings_p dst, mpeg2_ts_settings_p src) {
 
-	LOGD_EV_FMT("... %zx <- %zx", dst, src);
+	SYSLOGD_EX(LOG_DEBUG, "... %zx <- %zx", (size_t)dst, (size_t)src);
 
 	if (NULL == dst || NULL == src)
 		return (EINVAL);
@@ -227,8 +230,8 @@ mpeg2_ts_settings_copy(mpeg2_ts_settings_p dst, mpeg2_ts_settings_p src) {
 		dst->pids_flt.pids = NULL;
 		dst->pids_flt.pids_count = 0;
 	} else {
-		LOG_EV_FMT("mem=%zx, count=%zu",
-		    dst->pids_flt.pids, dst->pids_flt.pids_count);
+		SYSLOGD_EX(LOG_DEBUG, "mem=%zx, count=%zu",
+		    (size_t)dst->pids_flt.pids, dst->pids_flt.pids_count);
 		dst->pids_flt.pids = mallocarray(dst->pids_flt.pids_count,
 		    sizeof(uint32_t));
 		if (NULL == dst->pids_flt.pids) {
@@ -245,7 +248,7 @@ mpeg2_ts_settings_copy(mpeg2_ts_settings_p dst, mpeg2_ts_settings_p src) {
 void
 mpeg2_ts_settings_free_data(mpeg2_ts_settings_p s) {
 
-	LOGD_EV_FMT("... %zx", s);
+	SYSLOGD_EX(LOG_DEBUG, "... %zx", (size_t)s);
 
 	if (NULL == s)
 		return;
@@ -262,7 +265,7 @@ int
 mpeg2_ts_data_alloc(mpeg2_ts_data_p *m2ts_ret, mpeg2_ts_settings_p s) {
 	mpeg2_ts_data_p m2ts;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	m2ts = zalloc(sizeof(mpeg2_ts_data_t));
 	if (NULL == m2ts)
@@ -286,7 +289,7 @@ void
 mpeg2_ts_data_free(mpeg2_ts_data_p m2ts) {
 	size_t i;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == m2ts)
 		return;
@@ -794,7 +797,7 @@ mpeg2_ts_psi_tbl_reassemble(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 		if (buf_pos > buf_end) { /* Out of range. */
 			ts_hdr->te = 1; /* Mark packet as bad. */
 			ts_pid->data_errors ++;
-			LOGD_EV_FMT("Out of range.");
+			SYSLOGD_EX(LOG_DEBUG, "Out of range.");
 			return (EINVAL);
 		}
 		data_size = (size_t)(buf_end - buf_pos);
@@ -807,7 +810,7 @@ mpeg2_ts_psi_tbl_reassemble(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 			if (tbl_sntx->sn > tbl_sntx->lsn) { /* Is table section num valid? */
 				ts_hdr->te = 1; /* Mark packet as bad. */
 				ts_pid->data_errors ++;
-				LOGD_EV_FMT("Out of range: sn > lsn");
+				SYSLOGD_EX(LOG_DEBUG, "Out of range: sn > lsn.");
 				return (EINVAL);
 			}
 		}
@@ -818,7 +821,7 @@ mpeg2_ts_psi_tbl_reassemble(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 		    sizeof(mpeg2_psi_tbl_sntx_t)) > sec_size)) { /* Out of range. */
 			ts_hdr->te = 1; /* Mark packet as bad. */
 			ts_pid->data_errors ++;
-			LOGD_EV_FMT("Out of range: TBL_SEC_LEN = %zu", sec_size);
+			SYSLOGD_EX(LOG_DEBUG, "Out of range: TBL_SEC_LEN = %zu.", sec_size);
 			return (EINVAL);
 		}
 		psi_tbl = mpeg2_ts_pid_psi_tbl_get(ts_pid, tbl_hdr->tid,
@@ -861,7 +864,7 @@ mpeg2_ts_psi_tbl_reassemble(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 			    tbl_hdr->tid)) {
 				ts_hdr->te = 1; /* Mark packet as bad. */
 				ts_pid->data_errors ++;
-				LOGD_EV_FMT("This type of PID must not contain this TID");
+				SYSLOGD_EX(LOG_DEBUG, "This type of PID must not contain this TID.");
 #if 1
 				M2TS_DUMP_MPEG2TS_HDR(ts_hdr);
 				M2TS_DUMP_MPEG2TS_PSI_HDR(tbl_hdr);
@@ -942,7 +945,8 @@ mpeg2_ts_psi_tbl_reassemble(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 		psi_sect->data_w_off = 0;
 		ts_hdr->te = 1; /* Mark packet as bad. */
 		ts_pid->crc_errors ++;
-		LOGD_EV_FMT("CRC32 = %"PRIu32"", crc32mpeg2((uint8_t*)psi_sect->data, psi_sect->data_size));
+		SYSLOGD_EX(LOG_DEBUG, "CRC32 = %"PRIu32".",
+		    crc32mpeg2((uint8_t*)psi_sect->data, psi_sect->data_size));
 #if 1
 		M2TS_DUMP_MPEG2TS_HDR(ts_hdr);
 		M2TS_DUMP_MPEG2TS_PSI_HDR(tbl_hdr);
@@ -1029,13 +1033,15 @@ mpeg2_ts_psi_analize(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 			error = mpeg2_ts_data_progs_realloc(m2ts, (m2ts->prog_cnt +
 			    (tm / sizeof(mpeg2_psi_pat_sec_t))));
 			if (0 != error) {
-				LOG_ERR(error, "mpeg2_ts_data_progs_realloc()");
+				SYSLOG_ERR(LOG_ERR, error,
+				    "mpeg2_ts_data_progs_realloc().");
 				return (ENOMEM);
 			}
 			for (; (uint8_t*)pat_sec < pos_max; pat_sec ++) {
 				tm16 = MPEG2_PSI_PAT_SEC_PID(pat_sec);
-				LOGD_EV_FMT("%zu: prog = %"PRIu16", PID = %"PRIu16", r0 = %hhi",
-				    m2ts->prog_cnt, ntohs(pat_sec->pn), tm16, pat_sec->r0);//*/
+				SYSLOGD_EX(LOG_DEBUG,
+				    "%zu: prog = %"PRIu16", PID = %"PRIu16", r0 = %hhi.",
+				    m2ts->prog_cnt, ntohs(pat_sec->pn), tm16, pat_sec->r0);
 				if (0 == pat_sec->pn) {
 					/* Network Information Table:
 					 * Owervrite default PID value. */
@@ -1053,7 +1059,7 @@ mpeg2_ts_psi_analize(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 		mpeg2_ts_pid_psi_serialize(m2ts, ts_pid);
 		break;
 	case MPEG2_TS_PID_CAT: /* Conditional Access Table. */
-		//LOGD_EV_FMT("CAT...");
+		//SYSLOGD_EX(LOG_DEBUG, "CAT...");
 		mpeg2_ts_pid_psi_serialize(m2ts, ts_pid);
 		break;
 	case MPEG2_TS_PID_TSDT: /* Transport Stream Description Table. */
@@ -1077,7 +1083,8 @@ mpeg2_ts_psi_analize(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 #if 0
 			M2TS_DUMP_MPEG2TS_HDR(ts_hdr);
 			M2TS_DUMP_MPEG2TS_PSI_HDR(tbl_hdr)
-			LOGD_EV_FMT("transport_stream_id = %i, r0 = %hhi, ver = %hhi, cn = %hhi, sn = %hhi, lsn = %hhi, onid = %i, r1 = %hhi",
+			SYSLOGD_EX(LOG_DEBUG,
+			    "transport_stream_id = %i, r0 = %hhi, ver = %hhi, cn = %hhi, sn = %hhi, lsn = %hhi, onid = %i, r1 = %hhi".,
 			    sdt_sntx->tsid,
 			    sdt_sntx->r0, sdt_sntx->ver, sdt_sntx->cn,
 			    sdt_sntx->sn, sdt_sntx->lsn, sdt_sntx->onid, sdt_sntx->r1);
@@ -1087,12 +1094,14 @@ mpeg2_ts_psi_analize(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 			pos_max = (((uint8_t*)sdt_sec) + tm);
 			for (; ((uint8_t*)sdt_sec) < pos_max;) {
 				tm = MPEG2_PSI_SDT_SEC_DESCRS_LEN(sdt_sec);
-				LOGD_EV_FMT("sid = %"PRIu16", r0 = %hhi, eit_shed = %hhi, eit_pf = %hhi, rstatus = %hhi, free_ca = %hhi, descrs_len = %zu",
+				SYSLOGD_EX(LOG_DEBUG,
+				    "sid = %"PRIu16", r0 = %hhi, eit_shed = %hhi, eit_pf = %hhi, rstatus = %hhi, free_ca = %hhi, descrs_len = %zu.",
 				    sdt_sec->sid, sdt_sec->r0, sdt_sec->eit_shed, sdt_sec->eit_pf, sdt_sec->rstatus, sdt_sec->free_ca, tm);
 				mpeg2_ts_descriptors_dump((uint8_t*)(sdt_sec + 1), tm,
 				    str, sizeof(str), NULL);
-				LOGD_EV_FMT("Service Description descriptors:\r\n%s", str);
-
+				SYSLOGD_EX(LOG_DEBUG,
+				    "Service Description descriptors:\r\n%s",
+				    str);
 				sdt_sec = (mpeg2_psi_sdt_sec_p)
 				    (((uint8_t*)(sdt_sec + 1)) + tm);
 			}
@@ -1104,7 +1113,8 @@ mpeg2_ts_psi_analize(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 		break;
 	default:
 		if (ts_pid->pid == m2ts->nit.pid) {
-			LOGD_EV_FMT("NIT: PID = %"PRIu32"", ts_pid->pid);
+			SYSLOGD_EX(LOG_DEBUG,"NIT: PID = %"PRIu32".",
+			    ts_pid->pid);
 		} else if (NULL != prog && ts_pid->pid == prog->pmt.pid) {
 			prog->pids_cnt = 0;
 			for (i = 0; i < psi_tbl->sects_cnt; i ++) {
@@ -1118,12 +1128,14 @@ mpeg2_ts_psi_analize(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 					M2TS_DUMP_MPEG2TS_PSI_HDR(tbl_hdr);
 					return (EINVAL);
 				}
-				LOGD_EV_FMT("PMT: PID = %"PRIu32"", ts_pid->pid);
+				SYSLOGD_EX(LOG_DEBUG,"PMT: PID = %"PRIu32".",
+				    ts_pid->pid);
 				pmt_sntx = (mpeg2_psi_pmt_sntx_p)tbl_sntx;
 #if 0
 				M2TS_DUMP_MPEG2TS_HDR(ts_hdr);
 				M2TS_DUMP_MPEG2TS_PSI_HDR(tbl_hdr)
-				LOGD_EV_FMT("pnum = %i, r0 = %hhi, ver = %hhi, cn = %hhi, sn = %hhi, lsn = %hhi, r1 = %hhi, PCR_PID = %i, r2 = %hhi, info len = %i",
+				SYSLOGD_EX(LOG_DEBUG,
+				    "pnum = %i, r0 = %hhi, ver = %hhi, cn = %hhi, sn = %hhi, lsn = %hhi, r1 = %hhi, PCR_PID = %i, r2 = %hhi, info len = %i.",
 				    pmt_sntx->pnum,
 				    pmt_sntx->r0, pmt_sntx->ver, pmt_sntx->cn,
 				    pmt_sntx->sn, pmt_sntx->lsn, pmt_sntx->r1,
@@ -1133,7 +1145,8 @@ mpeg2_ts_psi_analize(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 				tm = MPEG2_PSI_PMT_P_INFO_LEN(pmt_sntx);
 				mpeg2_ts_descriptors_dump((uint8_t*)(pmt_sntx + 1), tm,
 				    str, sizeof(str), NULL);
-				LOGD_EV_FMT("program_info: size %zu\r\n%s", tm, str);
+				SYSLOGD_EX(LOG_DEBUG,
+				    "program_info: size %zu\r\n%s", tm, str);
 
 				/* Add/update all PIDs. */
 				pmt_sec = (mpeg2_psi_pmt_sec_p)(((uint8_t*)(pmt_sntx + 1)) + tm);
@@ -1146,7 +1159,8 @@ mpeg2_ts_psi_analize(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 				    &prog->pids_allocated, STR_M2TS_PID_ALLOC_CNT,
 				    (prog->pids_cnt + (tm / sizeof(mpeg2_psi_pmt_sec_t))));
 				if (0 != error) {
-					LOG_ERR(error, "realloc_items(prog->pids)");
+					SYSLOG_ERR(LOG_ERR, error,
+					    "realloc_items(prog->pids)");
 					return (ENOMEM);
 				}
 				pos_max = (((uint8_t*)pmt_sec) + tm);
@@ -1155,16 +1169,21 @@ mpeg2_ts_psi_analize(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 					prog->pids[prog->pids_cnt] = tm16;
 					error = mpeg2_ts_data_pids_add(m2ts, tm16);
 					if (0 != error) {
-						LOG_ERR(error, "mpeg2_ts_data_pids_add()");
+						SYSLOG_ERR(LOG_WARNING, error,
+						    "mpeg2_ts_data_pids_add()");
 						//return (ENOMEM);
 					}
 
 					tm = MPEG2_PSI_PMT_SEC_ES_INFO_LEN(pmt_sec);
-					LOGD_EV_FMT("%zu: s_type = %"PRIu16", EPID = %"PRIu16", r0 = %hhi, r1 = %hhi, es info len = %zu",
-					    prog->pids_cnt, pmt_sec->s_type, tm16, pmt_sec->r0, pmt_sec->r1, tm);
+					SYSLOGD_EX(LOG_DEBUG,
+					    "%zu: s_type = %"PRIu16", EPID = %"PRIu16", r0 = %hhi, r1 = %hhi, es info len = %zu.",
+					    prog->pids_cnt, pmt_sec->s_type,
+					    tm16, pmt_sec->r0, pmt_sec->r1, tm);
 					mpeg2_ts_descriptors_dump((uint8_t*)(pmt_sec + 1), tm,
 					    str, sizeof(str), NULL);
-					LOGD_EV_FMT("Elementary stream descriptors:\r\n%s", str);
+					SYSLOGD_EX(LOG_DEBUG,
+					    "Elementary stream descriptors:\r\n%s",
+					    str);
 
 					pmt_sec = (mpeg2_psi_pmt_sec_p)
 					    (((uint8_t*)(pmt_sec + 1)) + tm);
@@ -1173,7 +1192,7 @@ mpeg2_ts_psi_analize(mpeg2_ts_data_p m2ts, mpeg2_ts_prog_p prog,
 			mpeg2_ts_data_pids_cleanup(m2ts);
 			mpeg2_ts_pid_psi_serialize(m2ts, ts_pid);
 		} else {
-			LOGD_EV_FMT("XXXX WTF!?");
+			SYSLOGD_EX(LOG_DEBUG, "XXXX WTF!?");
 		}
 		break;
 	} /* switch (pid) */
@@ -1212,7 +1231,7 @@ mpeg2_ts_pid_psi_serialize(mpeg2_ts_data_p m2ts, mpeg2_ts_pid_p ts_pid) {
 		}
 	}
 
-	//LOGD_EV_FMT("PID = %"PRIu32": realloc(%zu, %zu)", ts_pid->pid, ts_pid->ts_psi_packets, buf_size);
+	//SYSLOGD_EX(LOG_DEBUG, "PID = %"PRIu32": realloc(%zu, %zu).", ts_pid->pid, ts_pid->ts_psi_packets, buf_size);
 	ts_hdr = realloc(ts_pid->ts_psi_packets, buf_size);
 	if (NULL == ts_hdr)
 		return (ENOMEM);
@@ -1235,7 +1254,7 @@ mpeg2_ts_pid_psi_serialize(mpeg2_ts_data_p m2ts, mpeg2_ts_pid_p ts_pid) {
 			ts_pid->ts_psi_packets_size += tm;
 		}
 	}
-	//LOGD_EV_FMT("PID = %"PRIu32": size = %zu)", ts_pid->pid, ts_pid->ts_psi_packets_size);
+	//SYSLOGD_EX(LOG_DEBUG,"PID = %"PRIu32": size = %zu).", ts_pid->pid, ts_pid->ts_psi_packets_size);
 	return (0);
 }
 
@@ -1305,7 +1324,7 @@ mpeg2_ts_pkt_analize(mpeg2_ts_data_p m2ts, r_buf_p r_buf, struct timespec *ts,
 	if (m2ts->mpeg2_ts_pkt_size > buf_size ||
 	    0 == MPEG2_TS_HDR_IS_VALID(ts_hdr)) {
 		error_count ++;
-		LOGD_EV_FMT("Invalid TS packet");
+		SYSLOGD_EX(LOG_DEBUG, "Invalid TS packet.");
 		M2TS_DUMP_MPEG2TS_HDR(ts_hdr);
 		m2ts->dropped_count ++;
 		return (error_count);
@@ -1315,7 +1334,7 @@ mpeg2_ts_pkt_analize(mpeg2_ts_data_p m2ts, r_buf_p r_buf, struct timespec *ts,
 	//M2TS_DUMP_MPEG2TS_HDR(ts_hdr);
 	pid = MPEG2_TS_PID(ts_hdr);
 	if (MPEG2_TS_PID_NULL == pid) { /* NULL PID. */
-		LOGD_EV_FMT("NULL PID found.");
+		SYSLOGD_EX(LOG_DEBUG, "NULL PID found.");
 		m2ts->null_pid_count ++;
 		if (0 != pids_flt->pid_null) 
 			return (error_count);
@@ -1323,7 +1342,7 @@ mpeg2_ts_pkt_analize(mpeg2_ts_data_p m2ts, r_buf_p r_buf, struct timespec *ts,
 	} else { /* Non NULL PID. */
 		ts_pid = mpeg2_ts_data_get_pid(m2ts, pid, &is_psi, &prog);
 		if (NULL == ts_pid) { /* Unknown PIDs. */
-			//LOGD_EV_FMT("Skip unknown and PID = %i", pid);
+			//SYSLOGD_EX(LOG_DEBUG, "Skip unknown and PID = %i.", pid);
 			m2ts->unknown_pid_count ++;
 			if (0 != pids_flt->pid_unknown)
 				return (error_count);
@@ -1343,7 +1362,7 @@ mpeg2_ts_pkt_analize(mpeg2_ts_data_p m2ts, r_buf_p r_buf, struct timespec *ts,
 		error = r_buf_wbuf_set2(r_buf, (uint8_t*)ts_hdr,
 		    m2ts->mpeg2_ts_pkt_size, &rpos);
 		if (0 != error) {
-			LOG_ERR(error, "r_buf_wbuf_set2()");
+			SYSLOG_ERR(LOG_ERR, error, "r_buf_wbuf_set2()");
 			return (error_count);
 		}
 		if (NULL != pkt_added) {
@@ -1390,7 +1409,7 @@ mpeg2_ts_pkt_analize(mpeg2_ts_data_p m2ts, r_buf_p r_buf, struct timespec *ts,
 			ts_hdr->te = 1; /* Mark packet as bad. */
 			ts_pid->data_errors ++;
 			error_count ++;
-			LOGD_EV_FMT("Out of range.");
+			SYSLOGD_EX(LOG_DEBUG, "Out of range.");
 			return (error_count);
 		}
 		buf_pos += (1 + af->len); /* Move pointer */
@@ -1419,16 +1438,17 @@ mpeg2_ts_pkt_analize(mpeg2_ts_data_p m2ts, r_buf_p r_buf, struct timespec *ts,
 		//M2TS_DUMP_MPEG2TS_HDR(ts_hdr);
 		//M2TS_DUMP_MPEG2TS_PES_HDR(pes_hdr);
 		if (0 == MPEG2_TS_PES_IS_VALID(pes_hdr)) {
-			LOGD_EV_FMT("pes_hdr - PSCP invalid = %x!!!, key framre: %i",
+			SYSLOGD_EX(LOG_DEBUG,
+			    "pes_hdr - PSCP invalid = %x!!!, key framre: %i.",
 			    pes_hdr->pscp, ((NULL != af && 0 != af->rai) ? 1 : 0));
 		}
 		if (MPEG2_PES_SID_IS_AUDIO(pes_hdr->sid)) {
-			LOGD_EV_FMT("pes_hdr - AUDIO, key framre: %i",
+			SYSLOGD_EX(LOG_DEBUG, "pes_hdr - AUDIO, key framre: %i.",
 			    ((NULL != af && 0 != af->rai) ? 1 : 0));
 		} else if (MPEG2_PES_SID_IS_VIDEO(pes_hdr->sid)) {
-			LOGD_EV_FMT("pes_hdr - VIDEO");
+			SYSLOGD_EX(LOG_DEBUG, "pes_hdr - VIDEO.");
 		} else {
-			LOGD_EV_FMT("pes_hdr - sid = %i, key framre: %i",
+			SYSLOGD_EX(LOG_DEBUG, "pes_hdr - sid = %i, key framre: %i.",
 			    pes_hdr->sid, ((NULL != af && 0 != af->rai) ? 1 : 0));
 		}
 #endif

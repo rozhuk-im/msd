@@ -61,7 +61,6 @@
           <File Name="src/liblcb/src/utils/ring_buffer.c"/>
           <File Name="src/liblcb/src/utils/sys_res_limits_xml.c"/>
           <File Name="src/liblcb/src/utils/xml.c"/>
-          <File Name="src/liblcb/src/utils/log.c"/>
           <File Name="src/liblcb/src/utils/sys.c"/>
           <File Name="src/liblcb/src/utils/info.c"/>
           <File Name="src/liblcb/src/utils/buf_str.c"/>
@@ -89,7 +88,6 @@
           <File Name="src/liblcb/include/utils/cmd_line_daemon.h"/>
           <File Name="src/liblcb/include/utils/info.h"/>
           <File Name="src/liblcb/include/utils/io_buf.h"/>
-          <File Name="src/liblcb/include/utils/log.h"/>
           <File Name="src/liblcb/include/utils/macro.h"/>
           <File Name="src/liblcb/include/utils/mem_utils.h"/>
           <File Name="src/liblcb/include/utils/ring_buffer.h"/>

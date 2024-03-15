@@ -3,13 +3,13 @@
 #
 
 ############################# INITIAL SECTION ##########################
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.20)
 
 project(msd C)
 
 set(PACKAGE_VERSION_MAJOR	3)
-set(PACKAGE_VERSION_MINOR	01)
-set(PACKAGE_VERSION_PATCH	1)
+set(PACKAGE_VERSION_MINOR	2)
+set(PACKAGE_VERSION_PATCH	0)
 
 set(PACKAGE_NAME		"${PROJECT_NAME}")
 set(PACKAGE_VERSION		"${PACKAGE_VERSION_MAJOR}.${PACKAGE_VERSION_MINOR}.${PACKAGE_VERSION_PATCH}")

@@ -19,7 +19,6 @@ set(MSD_BIN		msd.c
 			liblcb/src/utils/buf_str.c
 			liblcb/src/utils/info.c
 			liblcb/src/utils/ring_buffer.c
-			liblcb/src/utils/log.c
 			liblcb/src/utils/xml.c)
 
 add_executable(msd ${MSD_BIN})

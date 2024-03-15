@@ -36,6 +36,7 @@
 #include <stdio.h> /* snprintf, fprintf */
 #include <time.h>
 #include <errno.h>
+#include <syslog.h>
 
 #include "utils/macro.h"
 #include "net/socket.h"
@@ -50,7 +51,6 @@
 #include "utils/info.h"
 #include "utils/sys.h"
 #include "utils/ring_buffer.h"
-#include "utils/log.h"
 #include "crypto/hash/md5.h"
 #include "utils/xml.h"
 #include "proto/http.h"
@@ -163,7 +163,7 @@ str_hub_tpt_get_by_name(tp_p tp, const uint8_t *name, size_t name_size) {
 void
 str_hub_settings_def(str_hub_settings_p s_ret) {
 
-	LOGD_EV_FMT("... %zx", s_ret);
+	SYSLOGD_EX(LOG_DEBUG, "... %zx", (size_t)s_ret);
 
 	if (NULL == s_ret)
 		return;
@@ -196,7 +196,7 @@ str_hub_xml_load_settings(const uint8_t *buf, size_t buf_size,
 	const uint8_t *data;
 	size_t data_size;
 
-	LOGD_EV_FMT("... %zx", params);
+	SYSLOGD_EX(LOG_DEBUG, "... %zx", (size_t)params);
 
 	if (NULL == buf || 0 == buf_size || NULL == params)
 		return (EINVAL);
@@ -264,7 +264,7 @@ str_hub_xml_load_settings(const uint8_t *buf, size_t buf_size,
 int
 str_hub_settings_copy(str_hub_settings_p dst, str_hub_settings_p src) {
 
-	LOGD_EV_FMT("... %zx <- %zx", dst, src);
+	SYSLOGD_EX(LOG_DEBUG, "... %zx <- %zx", (size_t)dst, (size_t)src);
 
 	if (NULL == dst || NULL == src)
 		return (EINVAL);
@@ -291,7 +291,7 @@ str_hub_settings_copy(str_hub_settings_p dst, str_hub_settings_p src) {
 void
 str_hub_settings_free_data(str_hub_settings_p s) {
 
-	LOGD_EV_FMT("... %zx", s);
+	SYSLOGD_EX(LOG_DEBUG, "... %zx", (size_t)s);
 
 	if (NULL == s)
 		return;
@@ -329,8 +329,9 @@ str_hubs_bckt_create(tp_p tp, const char *app_ver,
 	}
 	/* Base HTTP headers. */
 	if (0 != info_get_os_ver("/", 1, osver,
-	    (sizeof(osver) - 1), NULL))
+	    (sizeof(osver) - 1), NULL)) {
 		memcpy(osver, "Generic OS/1.0", 15);
+	}
 	shbskt->base_http_hdrs_size = (size_t)snprintf((char*)shbskt->base_http_hdrs,
 	    sizeof(shbskt->base_http_hdrs),
 	    "Server: %s %s HTTP stream hub by Rozhuk Ivan"
@@ -343,7 +344,7 @@ str_hubs_bckt_create(tp_p tp, const char *app_ver,
 	error = tpt_ev_add_args(tp_thread_get_rr(shbskt->tp),
 	    TP_EV_TIMER, 0, 0, 1000 /* 1 sec. */, &shbskt->service_tmr);
 	if (0 != error) {
-		LOGD_ERR(error, "tpt_ev_add_args()");
+		SYSLOG_ERR(LOG_ERR, error, "tpt_ev_add_args().");
 		goto err_out;
 	}
 
@@ -378,7 +379,7 @@ str_hubs_bckt_destroy_msg_cb(tpt_p tpt, void *udata) {
 	str_hubs_bckt_p shbskt = (str_hubs_bckt_p)udata;
 	str_hub_p str_hub, str_hub_temp;
 
-	//LOGD_EV("...");
+	//SYSLOGD_EX(LOG_DEBUG, "...");
 
 	TAILQ_FOREACH_SAFE(str_hub,
 	    &shbskt->thr_data[tp_thread_get_num(tpt)].hub_head,
@@ -417,7 +418,7 @@ str_hubs_bckt_enum_msg_cb(tpt_p tpt, void *udata) {
 	str_hubs_bckt_p shbskt = enum_data->shbskt;
 	str_hub_p str_hub, str_hub_temp;
 
-	//LOGD_EV("...");
+	//SYSLOGD_EX(LOG_DEBUG, "...");
 
 	TAILQ_FOREACH_SAFE(str_hub,
 	    &shbskt->thr_data[tp_thread_get_num(tpt)].hub_head,
@@ -491,7 +492,8 @@ str_hubs_bckt_timer_service(str_hubs_bckt_p shbskt, str_hub_p str_hub,
 			    ts->tv_sec) { /* Report about send timeout. */
 				strh_cli_send_ready_cb(strh_cli->tptask,
 				    ETIMEDOUT, 0, 0, strh_cli);
-				LOGD_EV_FMT("ETIMEDOUT: snd_timeout = %zu, tv_sec = %lu, last_snd_time = %lu",
+				SYSLOGD_EX(LOG_DEBUG,
+				    "ETIMEDOUT: snd_timeout = %zu, tv_sec = %lu, last_snd_time = %lu.",
 				    str_hub->s.skt_opts.snd_timeout,
 				    ts->tv_sec,
 				    strh_cli->last_snd_time);
@@ -503,7 +505,7 @@ str_hubs_bckt_timer_service(str_hubs_bckt_p shbskt, str_hub_p str_hub,
 	if (0 == (STR_HUB_S_F_ZERO_CLI_PERSISTENT & str_hub->s.flags) &&
 	    0 == str_hub->cli_count &&
 	    (str_hub->zero_cli_time + (time_t)str_hub->s.zero_cli_timeout) < ts->tv_sec) { /* No more clients, selfdestroy. */
-		LOG_EV_FMT("%s: No more clients, selfdestroy.", str_hub->name);
+		syslog(LOG_INFO, "%s: No more clients, selfdestroy.", str_hub->name);
 		str_hub_destroy(str_hub);
 		return;
 	}
@@ -552,7 +554,7 @@ str_hubs_bckt_timer_msg_cb(tpt_p tpt, void *udata) {
 	str_hubs_stat_t stat;
 	size_t thread_num;
 
-	//LOGD_EV("...");
+	//SYSLOGD_EX(LOG_DEBUG, "...");
 
 	thread_num = tp_thread_get_num(tpt);
 	mem_bzero(&stat, sizeof(str_hubs_stat_t));
@@ -570,7 +572,7 @@ void
 str_hubs_bckt_timer_cb(tp_event_p ev __unused, tp_udata_p tp_udata) {
 	str_hubs_bckt_p shbskt = (str_hubs_bckt_p)tp_udata->ident;
 
-	//LOGD_EV("...");
+	//SYSLOGD_EX(LOG_DEBUG, "...");
 	if (NULL == shbskt)
 		return;
 	memcpy(&shbskt->last_tmr_time, &shbskt->last_tmr_time_next,
@@ -619,7 +621,7 @@ str_hub_create(str_hubs_bckt_p shbskt, tpt_p tpt,
     uint8_t *name, size_t name_size, str_hub_p *str_hub_ret) {
 	str_hub_p str_hub;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == shbskt ||
 	    NULL == name || 0 == name_size ||
@@ -655,7 +657,7 @@ str_hub_create(str_hubs_bckt_p shbskt, tpt_p tpt,
 	TAILQ_INSERT_HEAD(&shbskt->thr_data[tp_thread_get_num(tpt)].hub_head,
 	    str_hub, next);
 
-	LOG_INFO_FMT("%s: Created.", str_hub->name);
+	syslog(LOG_INFO, "%s: Created.", str_hub->name);
 
 	(*str_hub_ret) = str_hub;
 	return (0);
@@ -666,7 +668,7 @@ str_hub_destroy(str_hub_p str_hub) {
 	size_t i;
 	str_hub_cli_p strh_cli, strh_cli_temp;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == str_hub)
 		return;
@@ -684,7 +686,7 @@ str_hub_destroy(str_hub_p str_hub) {
 		str_hub_cli_destroy(strh_cli);
 	}
 
-	LOG_INFO_FMT("%s: Destroyed.", str_hub->name);
+	syslog(LOG_INFO, "%s: Destroyed.", str_hub->name);
 
 	str_hub_settings_free_data(&str_hub->s);
 
@@ -694,7 +696,7 @@ str_hub_destroy(str_hub_p str_hub) {
 int
 str_hub_settings_set(str_hub_p str_hub, str_hub_settings_p s) {
 
-	LOGD_EV_FMT("... %zx", s);
+	SYSLOGD_EX(LOG_DEBUG, "... %zx", (size_t)s);
 
 	if (NULL == str_hub || NULL == s)
 		return (EINVAL);
@@ -746,7 +748,7 @@ str_hub_cli_p
 str_hub_cli_alloc(uint32_t cli_type, uint32_t cli_sub_type) {
 	str_hub_cli_p strh_cli;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	strh_cli = zalloc(sizeof(str_hub_cli_t));
 	if (NULL == strh_cli)
@@ -765,7 +767,7 @@ str_hub_cli_destroy(str_hub_cli_p strh_cli) {
 	char straddr[STR_ADDR_LEN];
 	size_t tm;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == strh_cli)
 		return;
@@ -773,12 +775,10 @@ str_hub_cli_destroy(str_hub_cli_p strh_cli) {
 	str_hub = strh_cli->str_hub;
 	/* str_hub specified only if client attached to stream hub. */
 	if (NULL != str_hub) {
-		if (0 != LOG_IS_ENABLED()) {
-			sa_addr_port_to_str(&strh_cli->remonte_addr,
-			    straddr, sizeof(straddr), NULL);
-			LOG_INFO_FMT("%s - %s: deattached, cli_count = %zu",
-			    str_hub->name, straddr, (str_hub->cli_count - 1));
-		}
+		sa_addr_port_to_str(&strh_cli->remonte_addr,
+		    straddr, sizeof(straddr), NULL);
+		syslog(LOG_INFO, "%s - %s: deattached, cli_count = %zu.",
+		    str_hub->name, straddr, (str_hub->cli_count - 1));
 		/* Remove from stream hub. */
 		TAILQ_REMOVE(&str_hub->cli_head, strh_cli, next);
 		/* Update counters. */
@@ -864,7 +864,7 @@ str_hub_cli_attach(str_hub_p str_hub, str_hub_cli_p strh_cli) {
 	int error;
 	char straddr[STR_ADDR_LEN];
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == str_hub || NULL == strh_cli)
 		return (EINVAL);
@@ -894,24 +894,17 @@ str_hub_cli_attach(str_hub_p str_hub, str_hub_cli_p strh_cli) {
 	/* Convert to "ready to write notifier". */
 	str_hub_cli_import_tptask(strh_cli, strh_cli->tptask, str_hub->tpt);
 
+	sa_addr_port_to_str(&strh_cli->remonte_addr, straddr, sizeof(straddr), NULL);
 	/* Tune socket. */
 	error = skt_opts_apply_ex(tp_task_ident_get(strh_cli->tptask),
 	    SO_F_TCP_ES_CONN_MASK, &str_hub->s.skt_opts, 0, NULL);
-	if (0 != LOG_IS_ENABLED()) {
-		sa_addr_port_to_str(&strh_cli->remonte_addr, straddr,
-		    sizeof(straddr), NULL);
-		if (0 != error) {
-			sa_addr_port_to_str(&strh_cli->remonte_addr,
-			    straddr, sizeof(straddr), NULL);
-			LOG_ERR_FMT(error, "%s - %s: skt_opts_apply_ex()",
-			    str_hub->name, straddr);
-		}
-		LOG_INFO_FMT("%s - %s: attached, cli_count = %zu",
-		    str_hub->name, straddr, (str_hub->cli_count + 1));
-		LOGD_INFO_FMT("%s - %s: attached, snd_block_min_size = %zu, precache = %zu",
-		    str_hub->name, straddr, strh_cli->snd_block_min_size,
-		    strh_cli->precache);
-	}
+	SYSLOG_ERR(LOG_WARNING, error, "%s - %s: skt_opts_apply_ex().",
+	    str_hub->name, straddr);
+	syslog(LOG_INFO,
+	    "%s - %s: attached, cli_count = %zu, snd_block_min_size = %zu, precache = %zu.",
+	    str_hub->name, straddr, (str_hub->cli_count + 1),
+	    strh_cli->snd_block_min_size, strh_cli->precache);
+
 	TAILQ_INSERT_HEAD(&str_hub->cli_head, strh_cli, next);
 	str_hub->cli_count ++;
 
@@ -973,7 +966,7 @@ str_hub_cli_send_http_hdr(str_hubs_bckt_p shbskt, str_hub_cli_p strh_cli,
 	if (NULL != send_size) {
 		(*send_size) = (size_t)ios;
 	}
-	LOGD_EV_FMT("HTTP hdr: %zu", ios);
+	SYSLOGD_EX(LOG_DEBUG, "HTTP hdr: %zu", ios);
 	strh_cli->rpos.iov_off += (size_t)ios;
 	if (iovec_calc_size(mhdr.msg_iov, (size_t)mhdr.msg_iovlen) > (size_t)ios) /* Not all HTTP headers sended. */
 		return (EAGAIN); /* Try to send next headers part later. */
@@ -1005,7 +998,7 @@ str_hub_send_msg(str_hubs_bckt_p shbskt, const uint8_t *name, size_t name_size,
 	msg_data->arg1 = arg1;
 	msg_data->arg2 = arg2;
 
-	LOGD_EV_FMT("%s:...", msg_data->name);
+	SYSLOGD_EX(LOG_DEBUG, "%s:...", msg_data->name);
 
 	tpt = str_hub_tpt_get_by_name(shbskt->tp, name, name_size);
 	error = tpt_msg_send(tpt, NULL, TP_MSG_F_SELF_DIRECT,
@@ -1023,7 +1016,7 @@ str_hub_send_msg_cb(tpt_p tpt, void *udata) {
 	str_hub_cli_p strh_cli;
 	str_hub_cli_attach_data_p attach_data = NULL;
 
-	LOGD_EV_FMT("%s:...", msg_data->name);
+	SYSLOGD_EX(LOG_DEBUG, "%s:...", msg_data->name);
 
 	str_hub = str_hub_find(msg_data->shbskt, tpt, 1,
 	    msg_data->name, msg_data->name_size);
@@ -1031,14 +1024,16 @@ str_hub_send_msg_cb(tpt_p tpt, void *udata) {
 	switch (msg_data->cmd) {
 	case STR_HUB_CMD_CREATE: /* arg1: otional: str_hub_settings_p */
 		if (NULL != str_hub) {
-			LOG_ERR_FMT(EEXIST, "%s: str_hub_create() - allready exist!!!", msg_data->name);
+			syslog(LOG_ERR,
+			    "%s: str_hub_create() - allready exist!!!",
+			    msg_data->name);
 			free(msg_data->arg1);
 			break;
 		}
 		error = str_hub_create(msg_data->shbskt, tpt,
 		    msg_data->name, msg_data->name_size, &str_hub);
 		if (0 != error) {
-			LOG_ERR_FMT(error, "%s: str_hub_create() fail.",
+			SYSLOG_ERR(LOG_ERR, error, "%s: str_hub_create() fail.",
 			    msg_data->name);
 			free(msg_data->arg1);
 			break;
@@ -1051,19 +1046,21 @@ str_hub_send_msg_cb(tpt_p tpt, void *udata) {
 		    (str_hub_settings_p)msg_data->arg1);
 		str_hub_settings_free_data((str_hub_settings_p)msg_data->arg1);
 		free(msg_data->arg1);
-		LOG_ERR_FMT(error, "%s: str_hub_settings_set() fail.",
+		SYSLOG_ERR(LOG_ERR, error, "%s: str_hub_settings_set() fail.",
 		    msg_data->name);
 		break;
 	case STR_HUB_CMD_SRC_ADD: /* arg1: str_src_settings_p, arg2: type */
 		if (NULL == str_hub) {
-			LOG_ERR_FMT(EINVAL, "%s: str_hub_src_add() - HUB NOT FOUND!!!", msg_data->name);
+			syslog(LOG_ERR,
+			    "%s: str_hub_src_add() - HUB NOT FOUND!!!",
+			    msg_data->name);
 			free(msg_data->arg1);
 			break;
 		}
 		error = str_hub_src_add(str_hub, (uint32_t)msg_data->arg2,
 		    (str_src_settings_p)msg_data->arg1);
 		free(msg_data->arg1);
-		LOG_ERR_FMT(error, "%s: str_hub_src_add() fail.",
+		SYSLOG_ERR(LOG_ERR, error, "%s: str_hub_src_add() fail.",
 		    msg_data->name);
 		break;
 	case STR_HUB_CMD_CLI_ADD: /* arg1: str_hub_cli_p */
@@ -1081,7 +1078,8 @@ str_hub_send_msg_cb(tpt_p tpt, void *udata) {
 		}
 		error = str_hub_cli_attach(str_hub, strh_cli);
 		if (0 != error) {
-			LOG_ERR_FMT(error, "%s: str_hub_cli_attach() fail.", msg_data->name);
+			SYSLOG_ERR(LOG_ERR, error,
+			    "%s: str_hub_cli_attach() fail.", msg_data->name);
 			str_hub_cli_destroy(strh_cli);
 		}
 		break;
@@ -1091,25 +1089,30 @@ str_hub_send_msg_cb(tpt_p tpt, void *udata) {
 		if (NULL == str_hub) { /* Create new hub, set settins, add source. */
 			error = str_hub_create(msg_data->shbskt, tpt,
 			    msg_data->name, msg_data->name_size, &str_hub);
-			LOG_ERR_FMT(error, "%s: str_hub_create() fail.",
+			SYSLOG_ERR(LOG_ERR, error, "%s: str_hub_create() fail.",
 			    msg_data->name);
 			if (0 == error) {
 				error = str_hub_settings_set(str_hub,
 				    attach_data->hub_s);
-				LOG_ERR_FMT(error, "%s: str_hub_settings_set() fail.", msg_data->name);
+				SYSLOG_ERR(LOG_ERR, error,
+				    "%s: str_hub_settings_set() fail.",
+				    msg_data->name);
 			}
 			if (0 == error) {
 				error = str_hub_src_add(str_hub,
 				    attach_data->src_type,
 				    attach_data->src_s);
-				LOG_ERR_FMT(error, "%s: str_hub_src_add() fail.", msg_data->name);
+				SYSLOG_ERR(LOG_ERR, error,
+				    "%s: str_hub_src_add() fail.",
+				    msg_data->name);
 			}
 		}
 		if (0 == error &&
 		    NULL != strh_cli) {
 			tp_task_tpt_set(strh_cli->tptask, tpt);
 			error = str_hub_cli_attach(str_hub, strh_cli);
-			LOG_ERR_FMT(error, "%s: str_hub_cli_attach() fail.", msg_data->name);
+			SYSLOG_ERR(LOG_ERR, error,
+			    "%s: str_hub_cli_attach() fail.", msg_data->name);
 		}
 		if (0 != error) { /* CleanUp on errors. */
 			str_hub_cli_destroy(strh_cli);
@@ -1220,7 +1223,8 @@ send_start:
 		transfered_size = (size_t)ios;
 		data_avail2send = iovec_calc_size(mhdr.msg_iov, (size_t)mhdr.msg_iovlen);
 		strh_cli->rpos.iov_off += transfered_size;
-		LOGD_EV_FMT("DVB hdr: %zu / %zu", transfered_size, data_avail2send);
+		SYSLOGD_EX(LOG_DEBUG, "DVB hdr: %zu / %zu",
+		    transfered_size, data_avail2send);
 		if (data_avail2send > transfered_size) { /* Not all PIDs data sended. */
 			data_avail2send = UINT64_MAX; /* Activate polling. */
 			goto send_done; /* Try to send next headers part later. */
@@ -1245,7 +1249,7 @@ send_start:
 			    strh_cli->precache);
 		}
 		strh_cli->state |= STR_HUB_CLI_STATE_F_RPOS_INITIALIZED;
-		LOGD_EV_FMT("Precache: %zu",
+		SYSLOGD_EX(LOG_DEBUG, "Precache: %zu.",
 		    r_buf_data_avail_size(r_buf, &strh_cli->rpos, NULL));
 	}
 
@@ -1275,18 +1279,16 @@ send_start:
 		    0 != drop_size) {
 			str_hub->dropped_count ++;
 			if (0 != (STR_HUB_S_F_DROP_SLOW_CLI & str_hub->s.flags)) {
-				if (0 != LOG_IS_ENABLED()) {
-					sa_addr_port_to_str(&strh_cli->remonte_addr, straddr, sizeof(straddr), NULL);
-					LOG_EV_FMT("%s - %s: Drop lagged client, dropped = %zu",
-					    str_hub->name, straddr, drop_size);
-				}
+				sa_addr_port_to_str(&strh_cli->remonte_addr, straddr, sizeof(straddr), NULL);
+				syslog(LOG_INFO,
+				    "%s - %s: Drop lagged client, dropped = %zu.",
+				    str_hub->name, straddr, drop_size);
 				return (ESPIPE); /* Destroy me. */
 			} else {
-				if (0 != LOG_IS_ENABLED()) {
-					sa_addr_port_to_str(&strh_cli->remonte_addr, straddr, sizeof(straddr), NULL);
-					LOG_EV_FMT("%s - %s: Restart lagged client, dropped = %zu",
-					    str_hub->name, straddr, drop_size);
-				}
+				sa_addr_port_to_str(&strh_cli->remonte_addr, straddr, sizeof(straddr), NULL);
+				syslog(LOG_INFO,
+				    "%s - %s: Restart lagged client, dropped = %zu.",
+				    str_hub->name, straddr, drop_size);
 				/* Reset state flags to restart client. */
 				strh_cli->state &= ~(
 				    STR_HUB_CLI_STATE_F_MPEG2TS_HDRS_SENDED |
@@ -1339,7 +1341,8 @@ send_start:
 	error = SKT_ERR_FILTER(error);
 	if (0 != error &&
 	    0 != (STR_HUB_S_F_ZERO_COPY_ON_SEND & str_hub->s.flags)) {
-		LOG_ERR_FMT(error, "skt_sendfile(): i = %zu, off = %zu, size = %zu, sbytes = %zu, transfered_size = %zu",
+		SYSLOG_ERR(LOG_ERR, error,
+		    "skt_sendfile(): i = %zu, off = %zu, size = %zu, sbytes = %zu, transfered_size = %zu.",
 		    i, (size_t)thr_data->iov[i].iov_base,
 		    thr_data->iov[i].iov_len, (size_t)sbytes, transfered_size);
 	}
@@ -1352,8 +1355,8 @@ send_done: /* Update: last send time, polling status, send counter. */
 	LOGD_INFO_FMT("data2send = %zu, iov2snd = %zu, transfered_size = %zu",
 	     data2send, iovec_calc_size(thr_data->iov, iov_cnt), transfered_size);
 	/*if (0 != strh_cli->rpos.iov_off)
-		LOGD_EV_FMT("iov_off = %i", strh_cli->rpos.iov_off); //*/
-	/*LOGD_EV_FMT("%s: transfered_size = %zu, data2send = %zu, snd_block_min_size = %i",
+		SYSLOGD_EX(LOG_DEBUG, "iov_off = %i.", strh_cli->rpos.iov_off); //*/
+	/*SYSLOGD_EX(LOG_DEBUG, "%s: transfered_size = %zu, data2send = %zu, snd_block_min_size = %i.",
 	    str_hub->name, transfered_size, data2send, strh_cli->snd_block_min_size);//*/
 #endif
 	/* Update last send time. */
@@ -1372,9 +1375,9 @@ send_done: /* Update: last send time, polling status, send counter. */
 		if (data_avail2send > transfered_size &&
 		    (data_avail2send - transfered_size) > strh_cli->snd_block_min_size &&
 		    0 != (STR_HUB_S_F_USE_SEND_POLLING & str_hub->s.flags)) {
-			if (0 != LOG_IS_ENABLED())
-				sa_addr_port_to_str(&strh_cli->remonte_addr, straddr, sizeof(straddr), NULL);
-			LOGD_EV_FMT("%s - %s: switch to POLL: transfered_size = %zu, data2send = %zu, iov_off = %i",
+			sa_addr_port_to_str(&strh_cli->remonte_addr, straddr, sizeof(straddr), NULL);
+			SYSLOGD_EX(LOG_DEBUG,
+			    "%s - %s: switch to POLL: transfered_size = %zu, data2send = %zu, iov_off = %zu.",
 			    str_hub->name, straddr, transfered_size, data2send, strh_cli->rpos.iov_off);
 			strh_cli->state |= STR_HUB_CLI_STATE_F_POLL;
 			error = tp_task_start(strh_cli->tptask, TP_EV_WRITE, 0,
@@ -1382,7 +1385,8 @@ send_done: /* Update: last send time, polling status, send counter. */
 			    (tp_task_cb)strh_cli_send_ready_cb);
 			if (0 != error) {
 				strh_cli->state &= ~STR_HUB_CLI_STATE_F_POLL;
-				LOG_ERR_FMT(error, "%s - %s: fail on switch to POLL mode",
+				SYSLOG_ERR(LOG_ERR, error,
+				    "%s - %s: fail on switch to POLL mode.",
 				    str_hub->name, straddr);
 			} else {
 				str_hub->poll_cli_count ++;
@@ -1390,11 +1394,12 @@ send_done: /* Update: last send time, polling status, send counter. */
 		}
 	} else {
 		if (0 == transfered_size) {// || strh_cli->snd_block_min_size > data_avail2send) {
-			if (0 != LOGD_IS_ENABLED()) {
-				sa_addr_port_to_str(&strh_cli->remonte_addr, straddr, sizeof(straddr), NULL);
-				LOGD_EV_FMT("%s - %s: switch to normal: data2send = %zu",
-				    str_hub->name, straddr, data2send);
-			}
+#ifdef DEBUG
+			sa_addr_port_to_str(&strh_cli->remonte_addr, straddr,
+			    sizeof(straddr), NULL);
+			SYSLOGD_EX(LOG_DEBUG, "%s - %s: switch to normal: data2send = %zu.",
+			    str_hub->name, straddr, data2send);
+#endif
 			str_hub->poll_cli_count --;
 			strh_cli->state &= ~STR_HUB_CLI_STATE_F_POLL;
 			tp_task_stop(strh_cli->tptask);
@@ -1412,17 +1417,15 @@ strh_cli_send_ready_cb(tp_task_p tptask __unused, int error, int eof __unused,
 	char straddr[STR_ADDR_LEN];
 
 	if (0 != error) {
-		if (0 != LOG_IS_ENABLED()) {
-			sa_addr_port_to_str(&strh_cli->remonte_addr, straddr, sizeof(straddr), NULL);
-			LOG_ERR_FMT(error, "%s - %s: on send", str_hub->name, straddr);
-		}
+		sa_addr_port_to_str(&strh_cli->remonte_addr, straddr, sizeof(straddr), NULL);
+		SYSLOG_ERR(LOG_ERR, error, "%s - %s: on send.",
+		    str_hub->name, straddr);
 	} else {
 		error = str_hub_send_to_client(strh_cli, NULL, data2send);
-		if (0 != LOG_IS_ENABLED()) {
-			sa_addr_port_to_str(&strh_cli->remonte_addr, straddr, sizeof(straddr), NULL);
-			LOG_ERR_FMT(error, "%s - %s: str_hub_send_to_client(), dropped = %zu",
-			    str_hub->name, straddr);
-		}
+		sa_addr_port_to_str(&strh_cli->remonte_addr, straddr, sizeof(straddr), NULL);
+		SYSLOG_ERR(LOG_ERR, error,
+		    "%s - %s: str_hub_send_to_client().",
+		    str_hub->name, straddr);
 	}
 	if (0 != error) {
 		str_hub_cli_destroy(strh_cli);
@@ -1460,7 +1463,7 @@ str_hub_src_add(str_hub_p str_hub, uint32_t type, str_src_settings_p s) {
 	str_src_p src;
 	int error;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == str_hub || NULL == s ||
 	    STR_HUB_SRC_MAX_CNT == str_hub->src_cnt)
@@ -1506,7 +1509,7 @@ str_hub_src_switch(str_hub_p str_hub, size_t src_current_new) {
 	size_t i;
 	int error;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == str_hub || src_current_new >= str_hub->src_cnt)
 		return (EINVAL);
@@ -1533,7 +1536,7 @@ str_hub_src_remove(str_src_p src) {
 	size_t i;
 	str_hub_p str_hub;
 
-	LOGD_EV("...");
+	SYSLOGD_EX(LOG_DEBUG, "...");
 
 	if (NULL == src)
 		return;
@@ -1572,30 +1575,27 @@ str_hub_src_on_state(str_src_p src, void *udata, uint32_t state, uint32_t status
 	str_hub_p str_hub;
 	str_hub_cli_p strh_cli, strh_cli_temp;
 	char stat_str[1024];
-	size_t i, tm, src_current;
+	size_t i, tm = 0, src_current;
 
 	if (NULL == src)
 		return (EINVAL);
 	str_hub = udata;
 	src_current = str_hub_src_index_get(str_hub, src);
 
-	if (0 != LOG_IS_ENABLED()) {
-		tm = 0;
-		if (0 == status)
-			tm += (size_t)snprintf((stat_str + tm), (sizeof(stat_str) - tm), "OK ");
-		if (0 != (status & STR_SRC_STATUS_ERROR))
-			tm += (size_t)snprintf((stat_str + tm), (sizeof(stat_str) - tm), "ERROR ");
-		if (0 != (status & STR_SRC_STATUS_ENCRYPTED))
-			tm += (size_t)snprintf((stat_str + tm), (sizeof(stat_str) - tm), "ENCRYPTED ");
-		if (0 != (status & STR_SRC_STATUS_ZERO_BITRATE))
-			tm += (size_t)snprintf((stat_str + tm), (sizeof(stat_str) - tm), "ZERO_BITRATE ");
-		if (0 != (status & STR_SRC_STATUS_LOW_BITRATE))
-			tm += (size_t)snprintf((stat_str + tm), (sizeof(stat_str) - tm), "LOW_BITRATE ");
-		if (0 != (status & STR_SRC_STATUS_STREAM_ERRORS))
-			tm += (size_t)snprintf((stat_str + tm), (sizeof(stat_str) - tm), "STREAM_ERRORS ");
-		LOG_INFO_FMT("%s - %zu/%zu: %s [%"PRIu32": %s]...",
-		    str_hub->name, (src_current + 1), str_hub->src_cnt, str_src_states[state], status, stat_str);
-	}
+	if (0 == status)
+		tm += (size_t)snprintf((stat_str + tm), (sizeof(stat_str) - tm), "OK ");
+	if (0 != (status & STR_SRC_STATUS_ERROR))
+		tm += (size_t)snprintf((stat_str + tm), (sizeof(stat_str) - tm), "ERROR ");
+	if (0 != (status & STR_SRC_STATUS_ENCRYPTED))
+		tm += (size_t)snprintf((stat_str + tm), (sizeof(stat_str) - tm), "ENCRYPTED ");
+	if (0 != (status & STR_SRC_STATUS_ZERO_BITRATE))
+		tm += (size_t)snprintf((stat_str + tm), (sizeof(stat_str) - tm), "ZERO_BITRATE ");
+	if (0 != (status & STR_SRC_STATUS_LOW_BITRATE))
+		tm += (size_t)snprintf((stat_str + tm), (sizeof(stat_str) - tm), "LOW_BITRATE ");
+	if (0 != (status & STR_SRC_STATUS_STREAM_ERRORS))
+		tm += (size_t)snprintf((stat_str + tm), (sizeof(stat_str) - tm), "STREAM_ERRORS ");
+	syslog(LOG_INFO, "%s - %zu/%zu: %s [%"PRIu32": %s]...",
+	    str_hub->name, (src_current + 1), str_hub->src_cnt, str_src_states[state], status, stat_str);
 
 	switch (state) {
 	case STR_SRC_STATE_STOP:
@@ -1617,7 +1617,8 @@ str_hub_src_on_state(str_src_p src, void *udata, uint32_t state, uint32_t status
 		if (0 == status) {
 			/* Switch back to main. */
 			if (str_hub->src_current > src_current) {
-				LOG_INFO_FMT("%s: switch src from %zu to %zu - restored",
+				syslog(LOG_INFO,
+				    "%s: switch src from %zu to %zu - restored",
 				    str_hub->name, (str_hub->src_current + 1), (src_current + 1));
 				str_hub_src_switch(str_hub, src_current);
 			}
@@ -1632,8 +1633,10 @@ str_hub_src_on_state(str_src_p src, void *udata, uint32_t state, uint32_t status
 			}
 			if (tm) {
 				str_hub_src_switch(str_hub, (src_current + 1));
-				LOG_INFO_FMT("%s: switch src from %zu to %zu - backup",
-				    str_hub->name, (str_hub->src_current + 1), (src_current + 2));
+				syslog(LOG_INFO,
+				    "%s: switch src from %zu to %zu - backup.",
+				    str_hub->name, (str_hub->src_current + 1),
+				    (src_current + 2));
 			}
 		}
 	}
@@ -1662,7 +1665,8 @@ str_hub_src_on_state(str_src_p src, void *udata, uint32_t state, uint32_t status
 	/* No traffic check. */
 	if (0 != (str_hub->status & SH_STATUS_ZERO_BITRATE)) { /* No traffic... */
 		if (0 == (STR_HUB_S_F_ZERO_SRC_BITRATE_PERSISTENT & str_hub->s.flags)) {
-			LOG_INFO_FMT("%s: No more traffic, selfdestroy.", str_hub->name);
+			syslog(LOG_INFO, "%s: No more traffic, selfdestroy.",
+			    str_hub->name);
 			str_hub_destroy(str_hub);
 			return (-1);
 		}
