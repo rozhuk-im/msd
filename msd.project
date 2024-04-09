@@ -135,6 +135,7 @@
   <Dependencies Name="Debug"/>
   <Dependencies Name="Release"/>
   <VirtualDirectory Name="root">
+    <File Name=".editorconfig"/>
     <File Name="readme.md"/>
     <File Name="CMakeLists.txt"/>
     <File Name="config.h.cmake"/>
