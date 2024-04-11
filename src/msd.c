@@ -641,7 +641,7 @@ main(int argc, char *argv[]) {
 	g_data.load_tmr.cb_func = msd_load_timer_cb;
 	g_data.load_tmr.ident = (uintptr_t)&g_data;
 	error = tpt_ev_add_args(tp_thread_get(tp, 0), TP_EV_TIMER,
-	    (TP_F_ONESHOT), 0, 100, &g_data.load_tmr);
+	    TP_F_ONESHOT, TP_FF_T_MSEC, 100, &g_data.load_tmr);
 	if (0 != error) {
 		SYSLOG_ERR(LOG_CRIT, error, "tpt_ev_add_args().");
 		goto err_out;

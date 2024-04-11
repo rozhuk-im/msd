@@ -886,11 +886,11 @@ str_src_connect(str_src_p src, int retry) {
 		goto err_out;
 	}
 	/* Create IO task for socket. */
-	error = tp_task_create_connect(src->tpt, skt,
+	error = tp_task_connect_create(src->tpt, skt,
 	    TP_TASK_F_CLOSE_ON_DESTROY, (conn_tcp->conn_timeout * 1000),
 	    str_src_connected, src, &src->tptask);
 	if (0 != error) {
-		SYSLOG_ERR(LOG_ERR, error, "tp_task_create_connect().");
+		SYSLOG_ERR(LOG_ERR, error, "tp_task_connect_create().");
 		goto err_out;
 	}
 	return (str_src_state_update(src, STR_SRC_STATE_CONNECTING, 0, 0));
