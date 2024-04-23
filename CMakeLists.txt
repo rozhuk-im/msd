@@ -21,6 +21,13 @@ set(PACKAGE_TARNAME		"${PACKAGE_NAME}-${PACKAGE_VERSION}")
 
 ############################# OPTIONS SECTION ##########################
 
+option(ENABLE_TESTS		"Enable tests [default: OFF]"		OFF)
+if (ENABLE_TESTS)
+	# Enable testing functionality.
+	enable_testing()
+	set(ENABLE_LIBLCB_TESTS TRUE)
+endif()
+
 # Now CMAKE_INSTALL_PREFIX is a base prefix for everything.
 if (NOT CONFDIR)
 	set(CONFDIR "${CMAKE_INSTALL_PREFIX}/etc/msd")
@@ -170,6 +177,7 @@ if (CMAKE_BUILD_TYPE MATCHES "Debug")
 	#try_c_flag(WRESERVED_ID_MACRO	"-Wno-reserved-id-macro")
 	try_c_flag(WRESERVED_IDENTIFIER	"-Wno-reserved-identifier")
 	#try_c_flag(WSIGN_COMPARE	"-Wno-sign-compare")
+	try_c_flag(WSWITCH_DEFAULT	"-Wno-switch-default")
 	try_c_flag(WSWITCH_ENUM		"-Wno-switch-enum")
 	#try_c_flag(WUNUSED_CONST	"-Wno-unused-const-variable")
 	#try_c_flag(WUNUSED_FUNCTION	"-Wno-unused-function")
@@ -234,12 +242,12 @@ add_definitions(-DHAVE_CONFIG_H)
 
 ################################ SUBDIRS SECTION #######################
 
-add_definitions(-DMPEG2TS_XML_CONFIG)
-add_definitions(-DHTTP_SRV_XML_CONFIG)
-add_definitions(-DSOCKET_XML_CONFIG)
-add_definitions(-DTHREAD_POOL_SETTINGS_XML)
 include(src/liblcb/CMakeLists.txt)
 add_subdirectory(src)
+
+if (ENABLE_TESTS)
+	#add_subdirectory(tests)
+endif()
 
 ############################ TARGETS SECTION ###########################
 

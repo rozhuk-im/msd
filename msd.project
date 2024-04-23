@@ -143,7 +143,7 @@
   </VirtualDirectory>
   <Settings Type="Executable">
     <GlobalSettings>
-      <Compiler Options="" C_Options="-fsanitize=safe-stack;-D_FORTIFY_SOURCE=2;-fstack-protector;-fPIE;-fomit-frame-pointer;-DTHREAD_POOL_SETTINGS_XML;-DHTTP_SRV_XML_CONFIG;-DSOCKET_XML_CONFIG;-DMPEG2TS_XML_CONFIG;-DHAVE_PIPE2;-DHAVE_ACCEPT4;-DHAVE_MEMRCHR;-DHAVE_MEMMEM;-DHAVE_REALLOCARRAY;-DHAVE_MEMSET_S;-DHAVE_EXPLICIT_BZERO;-DHAVE_STRLCPY" Assembler="">
+      <Compiler Options="" C_Options="-fsanitize=safe-stack;-fPIE;-D_FORTIFY_SOURCE=2;-fstack-protector;-fomit-frame-pointer;-DTHREAD_POOL_SETTINGS_XML;-DHTTP_SRV_XML_CONFIG;-DSOCKET_XML_CONFIG;-DMPEG2TS_XML_CONFIG;-DHAVE_PIPE2;-DHAVE_ACCEPT4;-DHAVE_MEMRCHR;-DHAVE_MEMMEM;-DHAVE_REALLOCARRAY;-DHAVE_MEMSET_S;-DHAVE_EXPLICIT_BZERO;-DHAVE_STRLCPY;-DHAVE_KQUEUEX" Assembler="">
         <IncludePath Value="$(IntermediateDirectory)"/>
         <IncludePath Value="../"/>
         <IncludePath Value="../src"/>

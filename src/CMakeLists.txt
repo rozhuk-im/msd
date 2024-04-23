@@ -20,8 +20,11 @@ set(MSD_BIN		msd.c
 			liblcb/src/utils/info.c
 			liblcb/src/utils/ring_buffer.c
 			liblcb/src/utils/xml.c)
-
 add_executable(msd ${MSD_BIN})
+target_compile_definitions(msd PRIVATE -DMPEG2TS_XML_CONFIG)
+target_compile_definitions(msd PRIVATE -DHTTP_SRV_XML_CONFIG)
+target_compile_definitions(msd PRIVATE -DSOCKET_XML_CONFIG)
+target_compile_definitions(msd PRIVATE -DTHREAD_POOL_SETTINGS_XML)
 set_target_properties(msd PROPERTIES LINKER_LANGUAGE C)
 target_link_libraries(msd ${CMAKE_REQUIRED_LIBRARIES} ${CMAKE_EXE_LINKER_FLAGS})
 
