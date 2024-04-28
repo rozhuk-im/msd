@@ -117,7 +117,7 @@ dvb_fe_props_clr(struct dtv_properties *cmdseq) {
 	if (NULL == cmdseq)
 		return;
 	cmdseq->num = 0;
-	mem_bzero(cmdseq->props, (sizeof(struct dtv_property) * DTV_IOCTL_MAX_MSGS));
+	memset(cmdseq->props, 0x00, (sizeof(struct dtv_property) * DTV_IOCTL_MAX_MSGS));
 }
 
 static inline void
@@ -293,7 +293,7 @@ dvb_fe_create(uint32_t adapter_idx, uint32_t fe_idx, tpt_p tpt,
 
 	if (NULL == tpt || NULL == dvb_fe_ret)
 		return (EINVAL);
-	dvb_fe = zalloc(sizeof(dvb_fe_t));
+	dvb_fe = calloc(1, sizeof(dvb_fe_t));
 	if (NULL == dvb_fe)
 		return (ENOMEM);
 	dvb_fe->adapter_idx = adapter_idx;
@@ -321,7 +321,7 @@ dvb_fe_settings_def(dvb_fe_settings_p s_ret) {
 
 	if (NULL == s_ret)
 		return;
-	mem_bzero(s_ret, sizeof(dvb_fe_settings_t));
+	memset(s_ret, 0x00, sizeof(dvb_fe_settings_t));
 	s_ret->delivery_sys = SYS_UNDEFINED;
 	//s_ret->frequency;
 	s_ret->modulation = QAM_AUTO;
@@ -631,7 +631,7 @@ dvb_fe_tune(dvb_fe_p dvb_fe) {
 		    dvb_fe->adapter_idx, dvb_fe->fe_idx);
 		return (EINVAL);
 	}
-	mem_bzero(&feparams, sizeof(struct dvb_frontend_parameters));
+	memset(&feparams, 0x00, sizeof(struct dvb_frontend_parameters));
 	feparams.frequency = dvb_fe->frequency;
 	feparams.inversion = dvb_fe->s.spec_inv;
 

@@ -64,7 +64,7 @@ src_dvb_settings_def(src_dvb_settings_p s_ret) {
 	
 	if (NULL == s_ret)
 		return;
-	mem_bzero(s_ret, sizeof(dvb_fe_settings_t));
+	memset(s_ret, 0x00, sizeof(dvb_fe_settings_t));
 	dvb_fe_settings_def(&s_ret->fe_s);
 }
 
@@ -97,7 +97,7 @@ src_dvb_create(src_dvb_settings_p s, tpt_p tpt, src_dvb_p *src_dvb_ret) {
 
 	if (NULL == s || NULL == tpt || NULL == src_dvb_ret)
 		return (EINVAL);
-	src_dvb = zalloc(sizeof(src_dvb_t));
+	src_dvb = calloc(1, sizeof(src_dvb_t));
 	if (NULL == src_dvb)
 		return (ENOMEM);
 	/* Settings. */

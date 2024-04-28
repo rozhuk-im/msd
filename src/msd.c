@@ -282,7 +282,7 @@ msd_prog_service_load(const uint8_t *buf, size_t buf_size, const char *name,
 
 	if (NULL == buf || 0 == buf_size || NULL == srv)
 		return (EINVAL);
-	mem_bzero(srv, sizeof(prog_service_t));
+	memset(srv, 0x00, sizeof(prog_service_t));
 
 	/* Read from config. */
 	if (0 == xml_get_val_args(buf, buf_size, NULL, NULL, NULL, &ptm, &tm,
@@ -336,7 +336,7 @@ msd_channel_load(prog_settings_p ps, const uint8_t *cfg_file_buf, size_t cfg_fil
 	if (NULL == ps || NULL == cfg_file_buf || 0 == cfg_file_buf_size ||
 	    NULL == data || 0 == data_size)
 		return (EINVAL);
-	hub_params = zalloc(sizeof(str_hub_settings_t));
+	hub_params = calloc(1, sizeof(str_hub_settings_t));
 	if (NULL == hub_params) {
 		error = ENOMEM;
 		goto err_out;
@@ -504,7 +504,7 @@ main(int argc, char *argv[]) {
 	str_hubs_bckt_p shbskt;
 	cmd_line_data_t cmd_line_data;
 
-	mem_bzero(&g_data, sizeof(g_data));
+	memset(&g_data, 0x00, sizeof(g_data));
 	if (0 != cmd_line_parse(argc, argv, &cmd_line_data)) {
 		cmd_line_usage(PACKAGE_DESCRIPTION, PACKAGE_VERSION,
 		    "Rozhuk Ivan <rozhuk.im@gmail.com>",

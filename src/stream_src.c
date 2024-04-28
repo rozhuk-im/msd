@@ -289,7 +289,7 @@ str_src_settings_def(str_src_settings_p s_ret) {
 
 	if (NULL == s_ret)
 		return;
-	mem_bzero(s_ret, sizeof(str_src_settings_t));
+	memset(s_ret, 0x00, sizeof(str_src_settings_t));
 
 	skt_opts_init(STR_SRC_S_SKT_OPTS_INT_MASK,
 	    STR_SRC_S_SKT_OPTS_INT_VALS, &s_ret->skt_opts);
@@ -360,7 +360,7 @@ str_src_conn_def(uint32_t type, str_src_conn_params_p src_conn_params) {
 
 	if (NULL == src_conn_params)
 		return;
-	mem_bzero(src_conn_params, sizeof(str_src_conn_params_t));
+	memset(src_conn_params, 0x00, sizeof(str_src_conn_params_t));
 
 	switch (type) {
 	case STR_SRC_TYPE_UDP:
@@ -583,7 +583,7 @@ str_src_create(uint32_t type, str_src_settings_p s, tpt_p tpt,
 	default:
 		return (EINVAL);
 	}
-	src = zalloc((sizeof(str_src_t) + sizeof(str_src_conn_params_t) + 64));
+	src = calloc(1, (sizeof(str_src_t) + sizeof(str_src_conn_params_t) + 64));
 	if (NULL == src)
 		return (ENOMEM);
 	/* Settings. */

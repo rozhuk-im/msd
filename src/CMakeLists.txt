@@ -20,6 +20,7 @@ set(MSD_BIN		msd.c
 			liblcb/src/utils/info.c
 			liblcb/src/utils/ring_buffer.c
 			liblcb/src/utils/xml.c)
+
 add_executable(msd ${MSD_BIN})
 target_compile_definitions(msd PRIVATE -DMPEG2TS_XML_CONFIG)
 target_compile_definitions(msd PRIVATE -DHTTP_SRV_XML_CONFIG)

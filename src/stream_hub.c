@@ -167,7 +167,7 @@ str_hub_settings_def(str_hub_settings_p s_ret) {
 
 	if (NULL == s_ret)
 		return;
-	mem_bzero(s_ret, sizeof(str_hub_settings_t));
+	memset(s_ret, 0x00, sizeof(str_hub_settings_t));
 	skt_opts_init(STR_HUB_S_SKT_OPTS_INT_MASK,
 	    STR_HUB_S_SKT_OPTS_INT_VALS, &s_ret->skt_opts);
 	s_ret->skt_opts.mask |= SO_F_NONBLOCK;
@@ -315,11 +315,11 @@ str_hubs_bckt_create(tp_p tp, const char *app_ver,
 
 	if (NULL == shbskt_ret)
 		return (EINVAL);
-	shbskt = zalloc(sizeof(str_hubs_bckt_t));
+	shbskt = calloc(1, sizeof(str_hubs_bckt_t));
 	if (NULL == shbskt)
 		return (ENOMEM);
 	thread_count_max = tp_thread_count_max_get(tp);
-	shbskt->thr_data = zalloc((sizeof(str_hub_thrd_t) * thread_count_max));
+	shbskt->thr_data = calloc(1, (sizeof(str_hub_thrd_t) * thread_count_max));
 	if (NULL == shbskt->thr_data) {
 		error = ENOMEM;
 		goto err_out;
@@ -457,7 +457,7 @@ str_hubs_bckt_stat_summary(str_hubs_bckt_p shbskt, str_hubs_stat_p stat) {
 	if (NULL == shbskt || NULL == stat)
 		return (EINVAL);
 	thread_cnt = tp_thread_count_max_get(shbskt->tp);
-	mem_bzero(stat, sizeof(str_hubs_stat_t));
+	memset(stat, 0x00, sizeof(str_hubs_stat_t));
 	for (i = 0; i < thread_cnt; i ++) {
 		stat->str_hub_count += shbskt->thr_data[i].stat.str_hub_count;
 		stat->cli_count += shbskt->thr_data[i].stat.cli_count;
@@ -555,7 +555,7 @@ str_hubs_bckt_timer_msg_cb(tpt_p tpt, void *udata) {
 	//SYSLOGD_EX(LOG_DEBUG, "...");
 
 	thread_num = tp_thread_get_num(tpt);
-	mem_bzero(&stat, sizeof(str_hubs_stat_t));
+	memset(&stat, 0x00, sizeof(str_hubs_stat_t));
 
 	/* Enum all Stream Hubs associated with this thread. */
 	TAILQ_FOREACH_SAFE(str_hub, &shbskt->thr_data[thread_num].hub_head,
@@ -636,7 +636,7 @@ str_hub_create(str_hubs_bckt_p shbskt, tpt_p tpt,
 		return (EEXIST);
 	}
 	/* Create new. */
-	str_hub = zalloc((sizeof(str_hub_t) + name_size + sizeof(void*)));
+	str_hub = calloc(1, (sizeof(str_hub_t) + name_size + sizeof(void*)));
 	if (NULL == str_hub)
 		return (ENOMEM);
 	str_hub->shbskt = shbskt;
@@ -650,7 +650,7 @@ str_hub_create(str_hubs_bckt_p shbskt, tpt_p tpt,
 	str_hub->tpt = tpt;
 	//str_hub->src = NULL;
 	//str_hub->src_cnt = 0;
-	//mem_bzero(&str_hub->s, sizeof(str_hub_settings_t));
+	//memset(&str_hub->s, 0x00, sizeof(str_hub_settings_t));
 
 	TAILQ_INSERT_HEAD(&shbskt->thr_data[tp_thread_get_num(tpt)].hub_head,
 	    str_hub, next);
@@ -748,7 +748,7 @@ str_hub_cli_alloc(uint32_t cli_type, uint32_t cli_sub_type) {
 
 	SYSLOGD_EX(LOG_DEBUG, "...");
 
-	strh_cli = zalloc(sizeof(str_hub_cli_t));
+	strh_cli = calloc(1, sizeof(str_hub_cli_t));
 	if (NULL == strh_cli)
 		return (NULL);
 	/* Set. */
@@ -926,7 +926,7 @@ str_hub_cli_send_http_hdr(str_hubs_bckt_p shbskt, str_hub_cli_p strh_cli,
 	if (NULL == strh_cli || NULL == shbskt)
 		return (EINVAL);
 	str_hub = strh_cli->str_hub;
-	mem_bzero(&mhdr, sizeof(mhdr));
+	memset(&mhdr, 0x00, sizeof(mhdr));
 	/* Gen HTTP resp line + headers. */
 	mhdr.msg_iov = (struct iovec*)iov;
 	mhdr.msg_iovlen = 3;
@@ -984,7 +984,7 @@ str_hub_send_msg(str_hubs_bckt_p shbskt, const uint8_t *name, size_t name_size,
 	if (NULL == shbskt || NULL == name ||
 	    0 == name_size || STR_HUB_NAME_MAX_SIZE <= name_size)
 		return (EINVAL);
-	msg_data = zalloc(sizeof(str_hub_msg_data_t) + name_size + sizeof(void*));
+	msg_data = calloc(1, sizeof(str_hub_msg_data_t) + name_size + sizeof(void*));
 	if (NULL == msg_data)
 		return (ENOMEM);
 	msg_data->shbskt = shbskt;
@@ -1191,7 +1191,7 @@ send_start:
 	    0 != (STR_SRC_S_F_M2TS_ANALYZING & str_hub->src[str_hub->src_current]->s.flags) &&
 	    NULL != str_hub->src[str_hub->src_current]->m2ts) {
 		m2ts = str_hub->src[str_hub->src_current]->m2ts;
-		mem_bzero(&mhdr, sizeof(mhdr));
+		memset(&mhdr, 0x00, sizeof(mhdr));
 		mhdr.msg_iov = (struct iovec*)thr_data->iov;
 		mhdr.msg_iovlen = (int)(2 + m2ts->prog_cnt);
 		thr_data->iov[0].iov_base = m2ts->pat.ts_psi_packets;
@@ -1324,7 +1324,7 @@ send_start:
 				break;
 		}
 	} else { /* Old way. */
-		mem_bzero(&mhdr, sizeof(mhdr));
+		memset(&mhdr, 0x00, sizeof(mhdr));
 		mhdr.msg_iov = (struct iovec*)thr_data->iov;
 		mhdr.msg_iovlen = (int)iov_cnt;
 		ios = sendmsg((int)ident, &mhdr, (MSG_DONTWAIT | MSG_NOSIGNAL));

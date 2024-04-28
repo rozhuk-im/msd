@@ -142,7 +142,7 @@ mpeg2_ts_def_settings(mpeg2_ts_settings_p s) {
 	if (NULL == s)
 		return;
 	/* Init. */
-	mem_bzero(s, sizeof(mpeg2_ts_settings_t));
+	memset(s, 0x00, sizeof(mpeg2_ts_settings_t));
 
 	/* Default settings. */
 	s->pids_flt.pids_count = 0;
@@ -232,7 +232,7 @@ mpeg2_ts_settings_copy(mpeg2_ts_settings_p dst, mpeg2_ts_settings_p src) {
 	} else {
 		SYSLOGD_EX(LOG_DEBUG, "mem=%zx, count=%zu",
 		    (size_t)dst->pids_flt.pids, dst->pids_flt.pids_count);
-		dst->pids_flt.pids = mallocarray(dst->pids_flt.pids_count,
+		dst->pids_flt.pids = reallocarray(NULL, dst->pids_flt.pids_count,
 		    sizeof(uint32_t));
 		if (NULL == dst->pids_flt.pids) {
 			dst->pids_flt.pids_count = 0;
@@ -267,7 +267,7 @@ mpeg2_ts_data_alloc(mpeg2_ts_data_p *m2ts_ret, mpeg2_ts_settings_p s) {
 
 	SYSLOGD_EX(LOG_DEBUG, "...");
 
-	m2ts = zalloc(sizeof(mpeg2_ts_data_t));
+	m2ts = calloc(1, sizeof(mpeg2_ts_data_t));
 	if (NULL == m2ts)
 		return (ENOMEM);
 	m2ts->mpeg2_ts_pkt_size = MPEG2_TS_PKT_SIZE_188;
@@ -349,7 +349,7 @@ mpeg2_ts_data_progs_realloc(mpeg2_ts_data_p m2ts, size_t count) {
 	if (NULL == progs) /* Realloc fail! */
 		return (ENOMEM);
 	if (count > m2ts->prog_allocated) { /* Init progs. */
-		mem_bzero(&progs[m2ts->prog_allocated],
+		memset(&progs[m2ts->prog_allocated], 0x00,
 		    ((count - m2ts->prog_allocated) * sizeof(mpeg2_ts_prog_t)));
 	}
 	m2ts->progs = progs;
@@ -389,7 +389,7 @@ mpeg2_ts_data_pids_realloc(mpeg2_ts_data_p m2ts, size_t count) {
 	if (NULL == pids) /* Realloc fail! */
 		return (ENOMEM);
 	if (count > m2ts->data_pids_allocated) { /* Init pids. */
-		mem_bzero(&pids[m2ts->data_pids_allocated],
+		memset(&pids[m2ts->data_pids_allocated], 0x00,
 		    ((count - m2ts->data_pids_allocated) * sizeof(mpeg2_ts_pid_t)));
 	}
 	m2ts->data_pids = pids;
@@ -435,7 +435,7 @@ mpeg2_ts_data_pids_cleanup(mpeg2_ts_data_p m2ts) {
 		memmove(&m2ts->data_pids[i], &m2ts->data_pids[(i + 1)],
 		    ((count - (i + 1)) * sizeof(mpeg2_ts_pid_t)));
 		count --;
-		mem_bzero(&m2ts->data_pids[count], sizeof(mpeg2_ts_pid_t));
+		memset(&m2ts->data_pids[count], 0x00, sizeof(mpeg2_ts_pid_t));
 	}
 	m2ts->data_pids_cnt = count;
 	return (mpeg2_ts_data_pids_realloc(m2ts, count));
@@ -645,7 +645,7 @@ mpeg2_ts_pid_psi_tbls_realloc(mpeg2_ts_pid_p ts_pid, size_t count) {
 	if (NULL == psi_tbls) /* Realloc fail! */
 		return (ENOMEM);
 	if (count > ts_pid->psi_tbls_allocated) { /* Init psi_tbls. */
-		mem_bzero(&psi_tbls[ts_pid->psi_tbls_allocated],
+		memset(&psi_tbls[ts_pid->psi_tbls_allocated], 0x00,
 		    ((count - ts_pid->psi_tbls_allocated) * sizeof(mpeg2_ts_psi_tbl_t)));
 	}
 	ts_pid->psi_tbls = psi_tbls;
