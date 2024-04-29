@@ -143,13 +143,13 @@
   </VirtualDirectory>
   <Settings Type="Executable">
     <GlobalSettings>
-      <Compiler Options="" C_Options="-fsanitize=safe-stack;-fPIE;-D_FORTIFY_SOURCE=2;-fstack-protector;-fomit-frame-pointer;-DTHREAD_POOL_SETTINGS_XML;-DHTTP_SRV_XML_CONFIG;-DSOCKET_XML_CONFIG;-DMPEG2TS_XML_CONFIG;-DHAVE_PIPE2;-DHAVE_ACCEPT4;-DHAVE_MEMRCHR;-DHAVE_MEMMEM;-DHAVE_REALLOCARRAY;-DHAVE_MEMSET_S;-DHAVE_EXPLICIT_BZERO;-DHAVE_STRLCPY;-DHAVE_KQUEUEX;-DHAVE_TIMINGSAFE_BCMP" Assembler="">
+      <Compiler Options="" C_Options="-fPIE;-D_FORTIFY_SOURCE=2;-fstack-protector;-fomit-frame-pointer;-DTHREAD_POOL_SETTINGS_XML;-DHTTP_SRV_XML_CONFIG;-DSOCKET_XML_CONFIG;-DMPEG2TS_XML_CONFIG;-DHAVE_PIPE2;-DHAVE_ACCEPT4;-DHAVE_MEMRCHR;-DHAVE_MEMMEM;-DHAVE_REALLOCARRAY;-DHAVE_MEMSET_S;-DHAVE_EXPLICIT_BZERO;-DHAVE_STRLCPY;-DHAVE_KQUEUEX;-DHAVE_TIMINGSAFE_BCMP" Assembler="">
         <IncludePath Value="$(IntermediateDirectory)"/>
         <IncludePath Value="../"/>
         <IncludePath Value="../src"/>
         <IncludePath Value="./src/liblcb/include"/>
       </Compiler>
-      <Linker Options="-fsanitize=safe-stack">
+      <Linker Options="">
         <Library Value="pthread"/>
       </Linker>
       <ResourceCompiler Options=""/>
@@ -157,6 +157,53 @@
     <Configuration Name="Debug" CompilerType="clang system" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
       <Compiler Options="-g -DDEBUG" C_Options="-ftrapv;-g -DDEBUG;-O0;-fwrapv;-fstack-protector-all;-Wall;-g3 -ggdb;-Wno-reserved-id-macro;-Wno-gnu-zero-variadic-macro-arguments;-Wno-variadic-macros;-Wno-documentation;-Wno-documentation-unknown-command;-Wno-padded;-Wno-cast-qual;-Wno-cast-function-type-strict;-Wno-reserved-identifier;-Wno-unsafe-buffer-usage" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0"/>
       <Linker Options="" Required="yes"/>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="$(IntermediateDirectory)/src/$(ProjectName)" IntermediateDirectory="$(ProjectPath)/$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-v -c /home/rim/docs/Progs/msd/msd/conf/msd.conf" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <BuildSystem Name="Default"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
+        <![CDATA[]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="no">
+        <DebuggerSearchPaths/>
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild>
+        <Command Enabled="yes">mkdir -p $(IntermediateDirectory)</Command>
+        <Command Enabled="yes">echo '#define PACKAGE_NAME "msd"' &gt; $(IntermediateDirectory)/config.h</Command>
+        <Command Enabled="yes">echo '#define PACKAGE_VERSION "1.0.0"' &gt;&gt; $(IntermediateDirectory)/config.h</Command>
+        <Command Enabled="yes">echo '#define PACKAGE_DESCRIPTION "Multi stream daemon"' &gt;&gt; $(IntermediateDirectory)/config.h</Command>
+        <Command Enabled="yes">echo '#define PACKAGE_URL "https://github.com/rozhuk-im/msd"' &gt;&gt; $(IntermediateDirectory)/config.h</Command>
+        <Command Enabled="yes">echo '#define PACKAGE_STRING PACKAGE_NAME" "PACKAGE_VERSION' &gt;&gt; $(IntermediateDirectory)/config.h</Command>
+      </PreBuild>
+      <PostBuild/>
+      <CustomBuild Enabled="no">
+        <RebuildCommand>./configure --enable-debug
+make clean
+make</RebuildCommand>
+        <CleanCommand>make clean</CleanCommand>
+        <BuildCommand>./configure --enable-debug
+make</BuildCommand>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory>$(ProjectPath)</WorkingDirectory>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+      <Completion EnableCpp11="no" EnableCpp14="no">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
+    <Configuration Name="Debug-ASAN" CompilerType="clang system" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-g -DDEBUG" C_Options="-ftrapv;-g -DDEBUG;-O0;-fwrapv;-fstack-protector-all;-Wall;-fsanitize=address;-fsanitize-recover=address;-g3 -ggdb;-Wno-reserved-id-macro;-Wno-gnu-zero-variadic-macro-arguments;-Wno-variadic-macros;-Wno-documentation;-Wno-documentation-unknown-command;-Wno-padded;-Wno-cast-qual;-Wno-cast-function-type-strict;-Wno-reserved-identifier;-Wno-unsafe-buffer-usage" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0"/>
+      <Linker Options="-fsanitize=address;-fsanitize-recover=address" Required="yes"/>
       <ResourceCompiler Options="" Required="no"/>
       <General OutputFile="$(IntermediateDirectory)/src/$(ProjectName)" IntermediateDirectory="$(ProjectPath)/$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-v -c /home/rim/docs/Progs/msd/msd/conf/msd.conf" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>

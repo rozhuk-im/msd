@@ -170,11 +170,12 @@ gen_hub_stat_text_entry_enum_cb(tpt_p tpt, str_hub_p str_hub, void *udata) {
 		if (STR_SRC_TYPE_TCP == src->type ||
 		    STR_SRC_TYPE_TCP_HTTP == src->type) {
 			/* Add soscket TCP stat. */
-			skt_tcp_stat_text(tp_task_ident_get(src->tptask),
+			if (0 == skt_tcp_stat_text(tp_task_ident_get(src->tptask),
 			    "    ",
 			    (char*)IO_BUF_FREE_GET(buf),
-			    IO_BUF_FREE_SIZE(buf), &stm);
-			IO_BUF_USED_INC(buf, stm);
+			    IO_BUF_FREE_SIZE(buf), &stm)) {
+				IO_BUF_USED_INC(buf, stm);
+			}
 		}
 		if (0 == mpeg2_ts_txt_dump(src->m2ts, IO_BUF_FREE_GET(buf),
 		    IO_BUF_FREE_SIZE(buf), &stm)) {
@@ -219,11 +220,12 @@ gen_hub_stat_text_entry_enum_cb(tpt_p tpt, str_hub_p str_hub, void *udata) {
 		    (char*)strh_cli->user_agent
 		);
 		/* Add soscket TCP stat. */
-		skt_tcp_stat_text(tp_task_ident_get(strh_cli->tptask),
+		if (0 == skt_tcp_stat_text(tp_task_ident_get(strh_cli->tptask),
 		    "	    ",
 		    (char*)IO_BUF_FREE_GET(buf),
-		    IO_BUF_FREE_SIZE(buf), &stm);
-		IO_BUF_USED_INC(buf, stm);
+		    IO_BUF_FREE_SIZE(buf), &stm)) {
+			IO_BUF_USED_INC(buf, stm);
+		}
 	}
 }
 void
