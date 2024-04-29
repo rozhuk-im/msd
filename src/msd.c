@@ -100,12 +100,6 @@ typedef struct prog_settings {
 	prog_service_t	multicast;
 	prog_service_t	http;
 	prog_service_t	transparent;
-
-	uintptr_t	log_fd;		// log file descriptor
-	uint8_t		*cfg_file_buf;
-	size_t		cfg_file_buf_size;
-	time_t		licence_eol;
-	cmd_line_data_t	cmd_line_data;	/*  */
 } prog_settings_t, *prog_settings_p;
 static prog_settings_t g_data;
 
@@ -449,9 +443,9 @@ void
 msd_load_timer_cb(tp_event_p ev, tp_udata_p tp_udata) {
 	int error;
 	prog_settings_p ps = (prog_settings_p)tp_udata->ident;
-	const uint8_t *cfg_file_buf = ps->cfg_file_buf;
+	const uint8_t *cfg_file_buf = tp_udata->ptr;
 	const uint8_t *data, *ptm, *cur_pos, *cur_pos2;
-	size_t tm, data_size, cfg_file_buf_size = ps->cfg_file_buf_size;
+	size_t tm, data_size, cfg_file_buf_size = tp_udata->size;
 	char strbuf[1024];
 
 
@@ -534,6 +528,7 @@ main(int argc, char *argv[]) {
 		SYSLOG_ERR(LOG_CRIT, error, "config read_file().");
 		goto err_out;
 	}
+
 	if (0 != xml_get_val_args(cfg_file_buf, cfg_file_buf_size,
 	    NULL, NULL, NULL, NULL, NULL,
 	    (const uint8_t*)"msd", NULL)) {
@@ -640,6 +635,8 @@ main(int argc, char *argv[]) {
 	/* Timer */
 	g_data.load_tmr.cb_func = msd_load_timer_cb;
 	g_data.load_tmr.ident = (uintptr_t)&g_data;
+	g_data.load_tmr.ptr = cfg_file_buf;
+	g_data.load_tmr.size = cfg_file_buf_size;
 	error = tpt_ev_add_args(tp_thread_get(tp, 0), TP_EV_TIMER,
 	    TP_F_ONESHOT, TP_FF_T_MSEC, 100, &g_data.load_tmr);
 	if (0 != error) {
