@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2024 Rozhuk Ivan <rozhuk.im@gmail.com>
+ * Copyright (c) 2011-2025 Rozhuk Ivan <rozhuk.im@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -586,7 +586,7 @@ main(int argc, char *argv[]) {
 	http_s.rcv_io_buf_init_size = 4;
 	http_s.rcv_io_buf_max_size = 4;
 	http_s.snd_io_buf_init_size = 4;
-	http_s.req_p_flags = (HTTP_SRV_REQ_P_F_CONNECTION | HTTP_SRV_REQ_P_F_HOST);
+	http_s.req_p_flags = (HTTP_SRV_REQ_P_F_CONNECTION | HTTP_SRV_REQ_P_F_HOST | HTTP_SRV_REQ_P_F_HOST_ANY_PORT);
 	http_s.resp_p_flags = (HTTP_SRV_RESP_P_F_CONN_CLOSE | HTTP_SRV_RESP_P_F_SERVER | HTTP_SRV_RESP_P_F_CONTENT_LEN);
 
 	error = http_srv_xml_load_start(data, data_size, tp,

@@ -380,7 +380,7 @@ str_hubs_bckt_destroy_msg_cb(tpt_p tpt, void *udata) {
 	//SYSLOGD_EX(LOG_DEBUG, "...");
 
 	TAILQ_FOREACH_SAFE(str_hub,
-	    &shbskt->thr_data[tp_thread_get_num(tpt)].hub_head,
+	    &shbskt->thr_data[tpt_get_num(tpt)].hub_head,
 	    next, str_hub_temp) {
 		str_hub_destroy(str_hub);
 	}
@@ -419,7 +419,7 @@ str_hubs_bckt_enum_msg_cb(tpt_p tpt, void *udata) {
 	//SYSLOGD_EX(LOG_DEBUG, "...");
 
 	TAILQ_FOREACH_SAFE(str_hub,
-	    &shbskt->thr_data[tp_thread_get_num(tpt)].hub_head,
+	    &shbskt->thr_data[tpt_get_num(tpt)].hub_head,
 	    next, str_hub_temp) {
 		enum_data->enum_cb(tpt, str_hub, enum_data->udata);
 	}
@@ -554,7 +554,7 @@ str_hubs_bckt_timer_msg_cb(tpt_p tpt, void *udata) {
 
 	//SYSLOGD_EX(LOG_DEBUG, "...");
 
-	thread_num = tp_thread_get_num(tpt);
+	thread_num = tpt_get_num(tpt);
 	memset(&stat, 0x00, sizeof(str_hubs_stat_t));
 
 	/* Enum all Stream Hubs associated with this thread. */
@@ -596,7 +596,7 @@ str_hub_find(str_hubs_bckt_p shbskt, tpt_p tpt, int move_up,
 	if (NULL == tpt) {
 		tpt = str_hub_tpt_get_by_name(shbskt->tp, name, name_size);
 	}
-	hub_head = &shbskt->thr_data[tp_thread_get_num(tpt)].hub_head;
+	hub_head = &shbskt->thr_data[tpt_get_num(tpt)].hub_head;
 	TAILQ_FOREACH(str_hub, hub_head, next) {
 		if (str_hub->name_size != name_size) {
 			continue;
@@ -652,7 +652,7 @@ str_hub_create(str_hubs_bckt_p shbskt, tpt_p tpt,
 	//str_hub->src_cnt = 0;
 	//memset(&str_hub->s, 0x00, sizeof(str_hub_settings_t));
 
-	TAILQ_INSERT_HEAD(&shbskt->thr_data[tp_thread_get_num(tpt)].hub_head,
+	TAILQ_INSERT_HEAD(&shbskt->thr_data[tpt_get_num(tpt)].hub_head,
 	    str_hub, next);
 
 	syslog(LOG_INFO, "%s: Created.", str_hub->name);
@@ -676,7 +676,7 @@ str_hub_destroy(str_hub_p str_hub) {
 		str_hub_src_remove(str_hub->src[i]);
 	}
 	/* Remove hub from thread hubs list. */
-	TAILQ_REMOVE(&str_hub->shbskt->thr_data[tp_thread_get_num(str_hub->tpt)].hub_head,
+	TAILQ_REMOVE(&str_hub->shbskt->thr_data[tpt_get_num(str_hub->tpt)].hub_head,
 	    str_hub, next);
 
 	/* Destroy all connected clients. */
@@ -1160,7 +1160,7 @@ str_hub_send_to_client(str_hub_cli_p strh_cli, struct timespec *ts,
 	r_buf = str_hub->src[str_hub->src_current]->r_buf;
 	if (NULL == r_buf)
 		goto send_done;
-	thr_data = &str_hub->shbskt->thr_data[tp_thread_get_num(str_hub->tpt)];
+	thr_data = &str_hub->shbskt->thr_data[tpt_get_num(str_hub->tpt)];
 	ident = tp_task_ident_get(strh_cli->tptask);
 
 send_start:

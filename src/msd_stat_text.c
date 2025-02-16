@@ -111,7 +111,7 @@ gen_hub_stat_text_entry_enum_cb(tpt_p tpt, str_hub_p str_hub, void *udata) {
 	    "\r\n"
 	    "Stream hub: %s		[status: %"PRIu32", thread: %zu @ cpu %i, sources: %zu, clients: %zu, dropped clients: %"PRIu64", no clients time: %zu]\r\n",
 	    str_hub->name, str_hub->status,
-	    tp_thread_get_num(tpt), tp_thread_get_cpu_id(tpt),
+	    tpt_get_num(tpt), tpt_get_cpu_id(tpt),
 	    str_hub->src_cnt, str_hub->cli_count, str_hub->dropped_count,
 	    (size_t)((0 != str_hub->cli_count) ? 0 : (cur_time - str_hub->zero_cli_time)));
 	/* Sources. */
@@ -320,7 +320,7 @@ gen_stat_text(const char *package_name, const char *package_version,
 		    "Thread: %zu @ cpu %i\r\n"
 		    "Stream hub count: %zu\r\n"
 		    "Sources count: %zu\r\n",
-		    i, tp_thread_get_cpu_id(tp_thread_get(tp, i)),
+		    i, tpt_get_cpu_id(tp_thread_get(tp, i)),
 		    tstat.str_hub_count, tstat.srcs_cnt);
 		for (tm = 0; tm < STR_SRC_STATE_MAX; tm ++) {
 			io_buf_printf(buf,

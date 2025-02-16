@@ -4,7 +4,7 @@
 [![Build-Ubuntu-latest Actions Status](https://github.com/rozhuk-im/msd/workflows/build-ubuntu-latest/badge.svg)](https://github.com/rozhuk-im/msd/actions)
 
 
-Rozhuk Ivan <rozhuk.im@gmail.com> 2011-2024
+Rozhuk Ivan <rozhuk.im@gmail.com> 2011-2025
 
 msd - Multi stream daemon.
 Program for organizing IP TV streaming on the network via HTTP.
